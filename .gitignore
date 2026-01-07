@@ -73,3 +73,10 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+
+
+android/app/build/
+android/app/build/outputs/apk/
+android/app/build/intermediates/cxx/Debug/git rm --cached android/app/build/outputs/apk/debug/app-debug.apk
+git rm --cached android/app/build/intermediates/cxx/Debug/**/*.so
