@@ -1,0 +1,26 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.cupid_cakes.app-mergeDebugResources-46:/values-en-rSG/values-en-rSG.xml",
+            "map": [
+                {
+                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/9fc1db2c7c1bcdeaa48b72ca434f5628/transformed/play-services-wallet-18.1.3/res/values-en-rSG/values.xml",
+                    "from": {
+                        "startLines": "4",
+                        "startColumns": "0",
+                        "startOffsets": "206",
+                        "endColumns": "70",
+                        "endOffsets": "276"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "74",
+                        "endOffsets": "125"
+                    }
+                }
+            ]
+        }
+    ]
+}

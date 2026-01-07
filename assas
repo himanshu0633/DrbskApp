@@ -1,0 +1,2019 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  StatusBar,
+  TextInput,
+  Modal,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import {
+  ShoppingCart,
+  Trash2,
+  Plus,
+  Minus,
+  CheckSquare,
+  Truck,
+  Mail,
+  User,
+  Phone,
+  MapPin,
+} from 'lucide-react-native';
+
+import { useSelector } from 'react-redux';
+import BASE_API_URL from '../../../config';
+import { useDispatch } from 'react-redux';
+import { deleteProduct, clearCart } from '../../store/Action';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import RazorpayCheckout from 'react-native-razorpay';
+import axiosInstance from '../../Components/AxiosInstance';
+import Toast from 'react-native-toast-message';
+
+// ✅ FIXED: Default user info object
+const DEFAULT_USER_INFO = {
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  city: '',
+  state: '',
+  pincode: '',
+  landmark: '',
+};
+
+
+
+const getSelectedAddress = () => {
+  if (
+    selectedAddressIndex !== null &&
+    savedAddresses[selectedAddressIndex]
+  ) {
+    return savedAddresses[selectedAddressIndex];
+  }
+  return '';
+};
+
+
+const Cart = () => {
+  const reduxCartItems = useSelector((state) => state.app.data);
+  const dispatch = useDispatch();
+  const navigation = useNavigation();
+  
+  // State declarations
+  const [cartItems, setCartItems] = useState([]);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [deliveryOption, setDeliveryOption] = useState('standard');
+  const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const getUserId = async () => {
+  const userDataStr = await AsyncStorage.getItem('userData');
+  if (userDataStr) {
+    const user = JSON.parse(userDataStr);
+    return user?._id || null;
+  }
+  return `guest_${Date.now()}_${Math.random().toString(36).substr(2, 8)}`;
+};
+const buildOrderItems = () => {
+  return cartItems.map(item => ({
+    productId: item._id,
+    name: item.name,
+    quantity: item.quantity,
+    price: Number(item.price),
+  }));
+};
+
+  // ✅ FIXED: Proper initialization with default object
+  const [userInfo, setUserInfo] = useState(DEFAULT_USER_INFO);
+  
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState(null);
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [isGuestUser, setIsGuestUser] = useState(false);
+
+  // Load user data on focus
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+      
+      const loadData = async () => {
+        if (isActive) {
+          setLoading(true);
+          await loadUserData();
+          loadCartItems();
+          setLoading(false);
+        }
+      };
+      
+      loadData();
+      
+      return () => {
+        isActive = false;
+      };
+    }, [reduxCartItems])
+  );
+
+  const loadUserData = async () => {
+    try {
+      const userDataStr = await AsyncStorage.getItem('userData');
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        setUserInfo(prev => ({
+          ...DEFAULT_USER_INFO,
+          ...prev,
+          name: userData?.name || '',
+          email: userData?.email || '',
+          phone: userData?.phone || '',
+          address: (Array.isArray(userData?.address) && userData.address.length > 0) 
+            ? userData.address[0] 
+            : '',
+        }));
+        setIsGuestUser(false);
+      } else {
+        // Check for guest email
+        const guestEmail = await AsyncStorage.getItem('guestEmail');
+        if (guestEmail) {
+          setUserInfo(prev => ({ 
+            ...DEFAULT_USER_INFO,
+            ...prev, 
+            email: guestEmail 
+          }));
+          setIsGuestUser(true);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      // Reset to defaults on error
+      setUserInfo(DEFAULT_USER_INFO);
+    }
+  };
+
+  const loadCartItems = () => {
+    // ✅ FIXED: Ensure unique keys by adding a unique identifier
+    const items = (reduxCartItems || []).map((item, index) => ({
+      ...item,
+      quantity: Number(item.quantity) || 1,
+      // Add a unique key if _id is not unique
+      cartItemKey: item._id ? `${item._id}-${index}-${Date.now()}` : `item-${index}-${Date.now()}`
+    })) || [];
+    setCartItems(items);
+  };
+
+  const updateQuantity = (id, newQuantity) => {
+    if (newQuantity < 1) return;
+    setCartItems(cartItems.map(item =>
+      item._id === id ? { ...item, quantity: newQuantity } : item
+    ));
+  };
+
+  const removeItem = (id) => {
+    setCartItems(cartItems.filter(item => item._id !== id));
+    dispatch(deleteProduct(id));
+  };
+
+  // Calculate totals
+  const calculateSubtotal = () => {
+    return (cartItems || []).reduce((total, item) => {
+      const price = parseFloat(item?.price) || 0;
+      const qty = parseInt(item?.quantity) || 1;
+      return total + price * qty;
+    }, 0);
+  };
+
+  const calculateTax = (subtotal) => {
+    return subtotal * 0.05; // 5% GST
+  };
+
+  const calculateDelivery = (subtotal) => {
+    return subtotal >= 350 ? 0 : 39;
+  };
+
+  const calculatePackaging = () => 5;
+
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const tax = calculateTax(subtotal);
+    const delivery = calculateDelivery(subtotal);
+    const packaging = calculatePackaging();
+    
+    return {
+      subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
+      delivery: delivery.toFixed(2),
+      packaging: packaging.toFixed(2),
+      total: (subtotal + tax + delivery + packaging).toFixed(2),
+      totalInPaise: Math.round((subtotal + tax + delivery + packaging) * 100),
+    };
+  };
+
+  // ✅ FIXED: Validation with defensive checks
+  const validateUserInfo = () => {
+    if (!userInfo) {
+      return 'User information is not loaded';
+    }
+    
+    const { 
+      name = '', 
+      email = '', 
+      phone = '', 
+      address = '', 
+      city = '', 
+      state = '', 
+      pincode = '' 
+    } = userInfo;
+    
+    if (!name.trim()) return 'Name is required';
+    if (!email.trim()) return 'Email is required';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Valid email is required';
+    if (!phone.trim()) return 'Phone number is required';
+    if (!/^\d{10}$/.test(phone)) return 'Valid 10-digit phone number is required';
+   const selectedAddress = getSelectedAddress();
+if (!selectedAddress) return 'Address is required';
+
+    if (!city.trim()) return 'City is required';
+    if (!state.trim()) return 'State is required';
+    if (!pincode.trim()) return 'Pincode is required';
+    
+    return null;
+  };
+
+  // ✅ FIXED: Safe user info access
+  const safeUserInfo = () => {
+    return userInfo || DEFAULT_USER_INFO;
+  };
+
+  // ✅ FIXED: Generate unique key for cart items
+  const getCartItemKey = (item, index) => {
+    if (!item) return `cart-item-${index}-${Date.now()}`;
+    
+    // Try to use _id first
+    if (item._id) {
+      return `cart-${item._id}-${index}`;
+    }
+    
+    // If no _id, generate a unique key
+    if (item.cartItemKey) {
+      return item.cartItemKey;
+    }
+    
+    // Fallback: use name + index + timestamp
+    return `cart-${item.name || 'item'}-${index}-${Date.now()}`;
+  };
+
+  // ✅ FIXED: Generate unique key for addresses
+  const getAddressKey = (address, index) => {
+    if (!address) return `address-${index}-${Date.now()}`;
+    
+    // Create a hash from the address string
+    const hash = address.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    
+    return `address-${Math.abs(hash)}-${index}`;
+  };
+
+  // ✅ FIXED: Improved createPaymentOrder with better error handling
+ const createPaymentOrder = async (amount, receiptData) => {
+  try {
+    console.log('Creating payment order with amount:', amount, 'receipt:', receiptData);
+
+    // Validate amount
+    if (!amount || amount <= 0) {
+      throw new Error('Invalid amount for payment order');
+    }
+
+    if (!receiptData) {
+      throw new Error('Receipt data is required');
+    }
+
+    // 🔹 Detect logged-in user or guest
+    let userId = 'guest';
+    const userDataStr = await AsyncStorage.getItem('userData');
+
+    if (userDataStr) {
+      const user = JSON.parse(userDataStr);
+      if (user?._id) {
+        userId = user._id;
+      }
+    }
+
+    // 🔹 Prepare items (MANDATORY for backend)
+    const items = cartItems.map(item => ({
+      productId: item._id,
+      name: item.name,
+      quantity: Number(item.quantity) || 1,
+      price: Number(item.price) || 0,
+    }));
+
+    if (!items.length) {
+      throw new Error('Cart is empty');
+    }
+
+    // 🔹 Final payload (same as WEB)
+    const requestData = {
+      userId,
+      items,
+      amount, // paise
+      currency: 'INR',
+      receipt: receiptData,
+      isGuest: userId === 'guest',
+    };
+
+    console.log('CREATE PAYMENT ORDER PAYLOAD:', requestData);
+
+    const response = await axiosInstance.post(
+      `${BASE_API_URL}/api/createPaymentOrder`,
+      requestData,
+      {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000,
+      }
+    );
+
+    console.log('Payment order response:', response.data);
+
+    if (!response.data) {
+      throw new Error('Empty response from payment server');
+    }
+
+    return response.data;
+
+  } catch (error) {
+    console.error('Error creating payment order:', error.response?.data || error.message);
+
+    if (error.response?.status === 400) {
+      throw new Error(error.response.data?.message || 'Invalid payment data');
+    }
+
+    if (error.response?.status === 401) {
+      throw new Error('Authentication failed');
+    }
+
+    if (error.response?.status === 500) {
+      throw new Error('Server error. Try again later.');
+    }
+
+    throw new Error(error.message || 'Failed to create payment order');
+  }
+};
+
+
+  // ✅ FIXED: Improved verifyPayment with better error handling
+  const verifyPayment = async (paymentData) => {
+    try {
+      console.log('Verifying payment with data:', paymentData);
+      
+      // Validate required fields
+      if (!paymentData.razorpay_payment_id || !paymentData.razorpay_order_id || !paymentData.razorpay_signature) {
+        throw new Error('Missing payment verification data');
+      }
+      
+      const response = await axiosInstance.post(
+        `${BASE_API_URL}/api/verifyPayment`, 
+        paymentData,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 30000, // 30 seconds timeout
+        }
+      );
+      
+      console.log('Payment verification response:', response.data);
+      
+      if (!response.data) {
+        throw new Error('Empty response from verification server');
+      }
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      
+      // Log detailed error information
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+        
+        // Provide more specific error messages
+        if (error.response.status === 400) {
+          throw new Error(`Payment verification failed: ${error.response.data?.message || 'Invalid payment data'}`);
+        } else if (error.response.status === 401) {
+          throw new Error('Payment verification authentication failed.');
+        } else if (error.response.status === 500) {
+          throw new Error('Server error during payment verification.');
+        }
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        throw new Error('No response from verification server.');
+      }
+      
+      throw new Error(error.message || 'Failed to verify payment');
+    }
+  };
+
+  // ✅ FIXED: Complete payment process with better validation
+  const handlePayment = async () => {
+    setPaymentLoading(true);
+    
+    try {
+      // Validate cart has items
+      if (!cartItems || cartItems.length === 0) {
+        throw new Error('Cart is empty. Please add items to cart.');
+      }
+      
+      const totals = calculateTotal();
+      const currentUserInfo = safeUserInfo();
+      
+      // Validate totals
+      if (!totals.totalInPaise || totals.totalInPaise <= 0) {
+        throw new Error('Invalid order amount');
+      }
+      
+      // Validate user information
+      const validationError = validateUserInfo();
+      if (validationError) {
+        throw new Error(validationError);
+      }
+      
+      // Generate unique receipt ID
+      const receipt = `receipt_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      console.log('Starting payment process with:', {
+        amount: totals.totalInPaise,
+        receipt: receipt,
+        totalAmount: totals.total,
+        itemsCount: cartItems.length,
+        userEmail: currentUserInfo.email
+      });
+
+      // Step 1: Create payment order
+      console.log('Step 1: Creating payment order...');
+      const paymentOrder = await createPaymentOrder(
+        totals.totalInPaise,
+        receipt
+      );
+
+      console.log('Payment order created successfully:', paymentOrder);
+
+      if (!paymentOrder.success) {
+        throw new Error(paymentOrder.message || 'Failed to create payment order');
+      }
+
+      if (!paymentOrder.order || !paymentOrder.order.id || !paymentOrder.order.amount) {
+        throw new Error('Invalid payment order response from server');
+      }
+
+      const razorpayOrder = paymentOrder.order;
+      
+      console.log('Razorpay order details:', razorpayOrder);
+
+      // Step 2: Prepare Razorpay options
+      const options = {
+        description: 'Order Payment - BSK Pharma',
+        currency: 'INR',
+        key: 'rzp_test_RpQ1JwSJEy6yAw', 
+        amount: razorpayOrder.amount.toString(),
+        name: 'BSK Pharma',
+        order_id: razorpayOrder.id,
+        prefill: {
+          email: currentUserInfo.email,
+          contact: currentUserInfo.phone,
+          name: currentUserInfo.name,
+        },
+        theme: { color: '#F47B20' },
+        notes: {
+          order_type: 'pharma_order',
+          items_count: cartItems.length.toString()
+        },
+        modal: {
+          ondismiss: () => {
+            console.log('Payment modal dismissed by user');
+            Toast.show({
+              type: 'info',
+              text1: 'Payment Cancelled',
+              text2: 'You cancelled the payment process.',
+            });
+          }
+        }
+      };
+
+      console.log('Opening Razorpay checkout with options:', options);
+
+      // Step 3: Open Razorpay checkout
+      const razorpayData = await RazorpayCheckout.open(options);
+      console.log('Razorpay payment successful:', razorpayData);
+      
+      // Step 4: Verify payment
+      console.log('Step 4: Verifying payment...');
+      
+      // Construct full address
+     const fullAddress = getSelectedAddress();
+
+      // Prepare cart items for order
+      const orderItems = (cartItems || []).map(item => ({
+        productId: item._id,
+        name: item.name,
+        quantity: item.quantity,
+        price: parseFloat(item.price) || 0,
+        image: item.media?.[0]?.url || '',
+        total: (parseFloat(item.price) || 0) * (item.quantity || 1)
+      }));
+      
+      // Calculate total from items to ensure accuracy
+      const calculatedTotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+      const calculatedTax = calculatedTotal * 0.05;
+      const calculatedDelivery = calculatedTotal >= 350 ? 0 : 39;
+      const calculatedPackaging = 5;
+      const finalTotal = calculatedTotal + calculatedTax + calculatedDelivery + calculatedPackaging;
+      
+      // 🔹 Detect userId (logged-in OR guest)
+const userId = currentUserInfo?._id
+  ? currentUserInfo._id
+  : 'guest';
+
+// 🔹 FINAL verification payload (ROOT level fields added)
+const verificationData = {
+  // Razorpay required fields
+  razorpay_payment_id: razorpayData.razorpay_payment_id,
+  razorpay_order_id: razorpayData.razorpay_order_id,
+  razorpay_signature: razorpayData.razorpay_signature,
+
+  // ✅ REQUIRED BY BACKEND (ROOT LEVEL)
+  userId: userId,
+  items: orderItems,
+  isGuest: userId === 'guest',
+
+  // Order details (extra info)
+  orderDetails: {
+    userInfo: {
+      name: currentUserInfo.name,
+      email: currentUserInfo.email,
+      phone: currentUserInfo.phone,
+      address: fullAddress,
+      city: currentUserInfo.city,
+      state: currentUserInfo.state,
+      pincode: currentUserInfo.pincode,
+      landmark: currentUserInfo.landmark || '',
+    },
+    totals: {
+      subtotal: calculatedTotal.toFixed(2),
+      tax: calculatedTax.toFixed(2),
+      delivery: calculatedDelivery.toFixed(2),
+      packaging: calculatedPackaging.toFixed(2),
+      total: finalTotal.toFixed(2),
+      totalInPaise: Math.round(finalTotal * 100),
+    },
+    deliveryOption: deliveryOption,
+    paymentMethod: 'razorpay',
+    receiptId: receipt,
+    orderDate: new Date().toISOString(),
+  }
+};
+
+
+      console.log('Sending verification data:', verificationData);
+
+      const verificationResult = await verifyPayment(verificationData);
+      console.log('Verification result:', verificationResult);
+      
+      if (verificationResult.success) {
+        // Payment successful
+        Toast.show({
+          type: 'success',
+          text1: 'Success!',
+          text2: 'Order placed successfully',
+          visibilityTime: 4000,
+        });
+        
+        // Clear cart
+        dispatch(clearCart());
+        setCartItems([]);
+        
+        // Save guest user info if not logged in
+        const userDataStr = await AsyncStorage.getItem('userData');
+        if (!userDataStr) {
+          await AsyncStorage.setItem('guestEmail', currentUserInfo.email);
+          await AsyncStorage.setItem('guestOrderId', verificationResult.orderId || razorpayData.razorpay_payment_id);
+          await AsyncStorage.setItem('guestOrderData', JSON.stringify({
+            orderId: verificationResult.orderId || razorpayData.razorpay_payment_id,
+            email: currentUserInfo.email,
+            date: new Date().toISOString(),
+            amount: totals.total,
+          }));
+        }
+        
+        // Navigate to order confirmation
+        navigation.navigate('OrderConfirmation', {
+          orderId: verificationResult.orderId || razorpayData.razorpay_payment_id,
+          email: currentUserInfo.email,
+          amount: totals.total,
+          items: cartItems.length,
+        });
+        
+      } else {
+        throw new Error(verificationResult.message || 'Payment verification failed');
+      }
+      
+    } catch (error) {
+      console.error('Payment process error:', error);
+      
+      // More detailed error logging
+      if (error.error) {
+        console.error('Razorpay error details:', error.error);
+      }
+      
+      // Show appropriate error message
+      let errorMessage = error.message || 'Something went wrong. Please try again.';
+      
+      // Handle specific error cases
+      if (errorMessage.includes('Bad request') || errorMessage.includes('400')) {
+        errorMessage = 'Invalid payment data. Please check your information and try again.';
+      } else if (errorMessage.includes('Network Error')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (errorMessage.includes('timeout')) {
+        errorMessage = 'Request timeout. Please try again.';
+      }
+      
+      Toast.show({
+        type: 'error',
+        text1: 'Payment Failed',
+        text2: errorMessage,
+        visibilityTime: 5000,
+      });
+      
+      // Don't close checkout modal on error, let user retry
+      // setShowCheckoutModal(false);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  // Handle checkout process
+  const handleCheckout = async () => {
+    const currentUserInfo = safeUserInfo();
+    
+    // Check if user has entered email (for guest users)
+    if (!currentUserInfo.email) {
+      setShowEmailModal(true);
+      return;
+    }
+
+    const validationError = validateUserInfo();
+    if (validationError) {
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: validationError,
+      });
+      return;
+    }
+
+    // Additional validation for payment
+    if (!cartItems || cartItems.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Empty Cart',
+        text2: 'Please add items to your cart before checkout',
+      });
+      return;
+    }
+
+    const totals = calculateTotal();
+    if (parseFloat(totals.total) <= 0) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Amount',
+        text2: 'Order total must be greater than zero',
+      });
+      return;
+    }
+
+    setShowCheckoutModal(true);
+  };
+
+  // Save address
+  const saveAddress = () => {
+    const currentUserInfo = safeUserInfo();
+    const newAddress = `${currentUserInfo.address}, ${currentUserInfo.landmark}, ${currentUserInfo.city}, ${currentUserInfo.state} - ${currentUserInfo.pincode}`;
+    setSavedAddresses(prev => [...prev, newAddress]);
+    setSelectedAddressIndex(savedAddresses.length);
+    setShowAddressModal(false);
+    
+    Toast.show({
+      type: 'success',
+      text1: 'Address Saved',
+      text2: 'Delivery address saved successfully',
+    });
+  };
+
+  // Select address
+  const selectAddress = (index) => {
+    setSelectedAddressIndex(index);
+    const addressParts = savedAddresses[index].split(', ');
+    if (addressParts.length >= 4) {
+      setUserInfo(prev => ({
+        ...DEFAULT_USER_INFO,
+        ...prev,
+        address: addressParts[0],
+        landmark: addressParts[1] || '',
+        city: addressParts[2] || '',
+        state: addressParts[3]?.split(' - ')[0] || '',
+        pincode: addressParts[3]?.split(' - ')[1] || '',
+      }));
+    }
+  };
+
+  // Handle guest email entry
+  const handleGuestEmail = () => {
+    const currentUserInfo = safeUserInfo();
+    
+    if (!currentUserInfo.email) {
+      Toast.show({
+        type: 'error',
+        text1: 'Email Required',
+        text2: 'Please enter your email to continue',
+      });
+      return;
+    }
+    
+    // Validate email
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentUserInfo.email)) {
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address',
+      });
+      return;
+    }
+    
+    setIsGuestUser(true);
+    setShowEmailModal(false);
+    
+    Toast.show({
+      type: 'info',
+      text1: 'Continuing as Guest',
+      text2: 'You can create an account later to track orders',
+    });
+  };
+
+  // ✅ FIXED: Safe render methods
+  const getProductImageUrl = (media) => {
+    try {
+      if (!media || !Array.isArray(media) || media.length === 0 || !media[0]?.url) {
+        return 'https://via.placeholder.com/80x100?text=No+Image';
+      }
+      
+      const imageUrl = media[0].url;
+      
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      
+      if (imageUrl.startsWith('/')) {
+        return `${BASE_API_URL}${imageUrl}`;
+      }
+      
+      return `${BASE_API_URL}/${imageUrl}`;
+    } catch (error) {
+      console.error('Error getting product image:', error);
+      return 'https://via.placeholder.com/80x100?text=Error';
+    }
+  };
+
+  // ✅ FIXED: Loading state
+  const renderLoading = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#F47B20" />
+      <Text style={styles.loadingText}>Loading your cart...</Text>
+    </View>
+  );
+
+  // Render empty cart
+  const renderEmptyCart = () => (
+    <View style={styles.emptyCartContainer}>
+      <ShoppingCart size={72} color="#ccc" />
+      <Text style={styles.emptyCartText}>Your cart is empty</Text>
+      <TouchableOpacity
+        style={styles.emptyCartButton}
+        onPress={() => navigation.navigate('Category')}
+      >
+        <Text style={styles.emptyCartButtonText}>Continue Shopping</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Render cart items
+  const renderCartItems = () => {
+    const currentUserInfo = safeUserInfo();
+    
+    return (
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Selected items count */}
+        <View style={styles.selectedCountContainer}>
+          <CheckSquare size={24} color="#F47B20" />
+          <Text style={styles.selectedCountText}>
+            {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart
+          </Text>
+        </View>
+
+        {/* ✅ FIXED: Cart items with unique keys */}
+        {(cartItems || []).map((item, index) => (
+          <View key={getCartItemKey(item, index)} style={styles.cartItemContainer}>
+            <View style={styles.cartItemCheckbox}>
+              <CheckSquare size={24} color="#F47B20" />
+            </View>
+
+            <View style={styles.cartItemContent}>
+              <View style={styles.cartItemRow}>
+                <Image
+                  source={{ uri: getProductImageUrl(item.media) }}
+                  style={styles.productImage}
+                  defaultSource={{ uri: 'https://via.placeholder.com/80x100?text=Loading...' }}
+                />
+
+                <View style={styles.productDetails}>
+                  <Text style={styles.productName} numberOfLines={2}>
+                    {item.name || 'Unnamed Product'}
+                  </Text>
+                  <Text style={styles.productPrice}>₹ {Number(item?.price || 0).toFixed(2)}</Text>
+                  <Text style={styles.deliveryInfo}>Delivery within 2-5 days</Text>
+
+                  <View style={styles.quantityContainer}>
+                    <Text style={styles.quantityLabel}>Quantity:</Text>
+                    <View style={styles.quantityControls}>
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => updateQuantity(item._id, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                      >
+                        <Minus size={18} color={item.quantity <= 1 ? "#ccc" : "#F47B20"} />
+                      </TouchableOpacity>
+
+                      <View style={styles.quantityValueContainer}>
+                        <Text style={styles.quantityValue}>{item.quantity}</Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.quantityButton}
+                        onPress={() => updateQuantity(item._id, item.quantity + 1)}
+                      >
+                        <Plus size={18} color="#F47B20" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => removeItem(item._id)}
+                    >
+                      <Trash2 size={22} color="#F47B20" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        ))}
+
+        {/* Guest User Notice */}
+        {isGuestUser && (
+          <View style={styles.guestNotice}>
+            <Text style={styles.guestNoticeTitle}>
+              ⚠️ You're shopping as a guest
+            </Text>
+            <Text style={styles.guestNoticeText}>
+              Enter your details below to complete checkout. 
+              You can track your order using your email.
+            </Text>
+          </View>
+        )}
+
+        {/* User Info Section */}
+        <View style={styles.userInfoSection}>
+          <Text style={styles.sectionTitle}>Contact Information</Text>
+          
+          <TouchableOpacity
+            style={styles.emailInputButton}
+            onPress={() => setShowEmailModal(true)}
+          >
+            <Mail size={20} color="#666" />
+            <View style={styles.emailInputContent}>
+              <Text style={styles.emailInputLabel}>
+                {currentUserInfo.email ? 'Email' : 'Enter your email'}
+              </Text>
+              <Text style={styles.emailInputValue} numberOfLines={1}>
+                {currentUserInfo.email || 'Required for order updates'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          {currentUserInfo.email && !currentUserInfo.name && (
+            <TouchableOpacity
+              style={styles.nameInputButton}
+              onPress={() => setShowEmailModal(true)}
+            >
+              <User size={20} color="#666" />
+              <View style={styles.emailInputContent}>
+                <Text style={styles.emailInputLabel}>Name</Text>
+                <Text style={styles.emailInputValue}>
+                  {currentUserInfo.name || 'Enter your full name'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {currentUserInfo.email && !currentUserInfo.phone && (
+            <TouchableOpacity
+              style={styles.nameInputButton}
+              onPress={() => setShowEmailModal(true)}
+            >
+              <Phone size={20} color="#666" />
+              <View style={styles.emailInputContent}>
+                <Text style={styles.emailInputLabel}>Phone Number</Text>
+                <Text style={styles.emailInputValue}>
+                  {currentUserInfo.phone || 'Enter 10-digit phone number'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ✅ FIXED: Delivery Address Section with unique keys */}
+        <View style={styles.addressSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Delivery Address</Text>
+            <TouchableOpacity onPress={() => setShowAddressModal(true)}>
+              <Text style={styles.addButton}>+ Add New</Text>
+            </TouchableOpacity>
+          </View>
+
+          {savedAddresses.length > 0 ? (
+            savedAddresses.map((address, index) => (
+              <TouchableOpacity
+                key={getAddressKey(address, index)}
+                style={[
+                  styles.addressCard,
+                  selectedAddressIndex === index && styles.selectedAddressCard
+                ]}
+                onPress={() => selectAddress(index)}
+              >
+                <View style={styles.addressRadio}>
+                  {selectedAddressIndex === index && (
+                    <View style={styles.addressRadioSelected} />
+                  )}
+                </View>
+                <Text style={styles.addressText}>{address}</Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <TouchableOpacity
+              style={styles.addAddressButton}
+              onPress={() => setShowAddressModal(true)}
+            >
+              <MapPin size={24} color="#F47B20" />
+              <Text style={styles.addAddressText}>Add Delivery Address</Text>
+            </TouchableOpacity>
+          )}
+
+          {currentUserInfo.email && !currentUserInfo.address && (
+            <Text style={styles.addressHint}>
+              Please add a delivery address to continue checkout
+            </Text>
+          )}
+        </View>
+
+        {/* Delivery Options */}
+        <View style={styles.deliveryModeContainer}>
+          <Text style={styles.deliveryModeTitle}>Delivery Mode</Text>
+
+          <TouchableOpacity
+            style={[
+              styles.deliveryOption,
+              deliveryOption === 'standard' && styles.deliveryOptionSelected
+            ]}
+            onPress={() => setDeliveryOption('standard')}
+          >
+            <View style={styles.radioOuter}>
+              {deliveryOption === 'standard' && <View style={styles.radioInner} />}
+            </View>
+            <Truck size={22} color="#F47B20" style={{ marginLeft: 8 }} />
+            <View style={{ marginLeft: 12 }}>
+              <Text style={styles.deliveryOptionTitle}>Standard Delivery</Text>
+              <Text style={styles.deliveryOptionSubtitle}>
+                {calculateSubtotal() >= 350 ? 'Free delivery' : '₹39 delivery charge'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Payment Summary */}
+        {renderPaymentSummary()}
+      </ScrollView>
+    );
+  };
+
+  // Render payment summary
+  const renderPaymentSummary = () => {
+    const totals = calculateTotal();
+    const subtotalNum = parseFloat(totals.subtotal);
+    const amountForFreeDelivery = subtotalNum < 350 ? 
+      (350 - subtotalNum).toFixed(2) : 0;
+    const currentUserInfo = safeUserInfo();
+
+    return (
+      <View style={styles.paymentSummaryContainer}>
+        <Text style={styles.paymentSummaryTitle}>Payment Summary</Text>
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Subtotal ({cartItems.length} items)</Text>
+          <Text style={styles.summaryValue}>₹ {totals.subtotal}</Text>
+        </View>
+
+        {amountForFreeDelivery > 0 && (
+          <TouchableOpacity style={styles.freeDeliveryBanner}>
+            <Text style={styles.freeDeliveryText}>
+              Add ₹{amountForFreeDelivery} more to get FREE delivery!
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Delivery</Text>
+          <Text style={styles.summaryValue}>
+            {subtotalNum >= 350 ? 'FREE' : '₹39.00'}
+          </Text>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Packaging</Text>
+          <Text style={styles.summaryValue}>₹5.00</Text>
+        </View>
+
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>Tax (5% GST)</Text>
+          <Text style={styles.summaryValue}>₹{totals.tax}</Text>
+        </View>
+
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Total Payable</Text>
+          <Text style={styles.totalValue}>₹{totals.total}</Text>
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.continueButton,
+            (!currentUserInfo.email || !currentUserInfo.address) && styles.disabledButton
+          ]}
+          onPress={handleCheckout}
+          disabled={
+  !currentUserInfo.email ||
+  !getSelectedAddress() ||
+  paymentLoading
+}
+        >
+          <Text style={styles.continueButtonText}>
+            {paymentLoading ? 'Processing...' : 'Proceed to Payment'}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={styles.paymentSecurityNote}>
+          🔒 Secure payment powered by Razorpay
+        </Text>
+      </View>
+    );
+  };
+
+  // Render address modal
+  const renderAddressModal = () => {
+    const currentUserInfo = safeUserInfo();
+    
+    return (
+      <Modal
+        visible={showAddressModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddressModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add Delivery Address</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {[
+                { key: 'address', label: 'Flat/House No., Building, Street', icon: MapPin },
+                { key: 'landmark', label: 'Landmark (Optional)', icon: MapPin },
+                { key: 'city', label: 'City', icon: MapPin },
+                { key: 'state', label: 'State', icon: MapPin },
+                { key: 'pincode', label: 'Pincode', icon: MapPin },
+              ].map(({ key, label, icon: Icon }) => (
+                <View key={`address-input-${key}`} style={styles.inputContainer}>
+                  <Icon size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    placeholder={label}
+                    value={currentUserInfo[key] || ''}
+                    onChangeText={(text) => setUserInfo(prev => ({ 
+                      ...DEFAULT_USER_INFO,
+                      ...prev, 
+                      [key]: text 
+                    }))}
+                    style={styles.textInput}
+                    placeholderTextColor="#999"
+                    keyboardType={key === 'pincode' ? 'numeric' : 'default'}
+                    maxLength={key === 'pincode' ? 6 : undefined}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setShowAddressModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={saveAddress}
+              >
+                <Text style={styles.saveButtonText}>Save Address</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // Render email modal
+  const renderEmailModal = () => {
+    const currentUserInfo = safeUserInfo();
+    
+    return (
+      <Modal
+        visible={showEmailModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowEmailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              {isGuestUser ? 'Complete Your Details' : 'Continue as Guest'}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              Enter your details to receive order updates
+            </Text>
+            
+            <View style={styles.inputContainer}>
+              <Mail size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Email Address *"
+                value={currentUserInfo.email}
+                onChangeText={(text) => setUserInfo(prev => ({ 
+                  ...DEFAULT_USER_INFO,
+                  ...prev, 
+                  email: text.trim() 
+                }))}
+                style={styles.textInput}
+                placeholderTextColor="#999"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <User size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Full Name *"
+                value={currentUserInfo.name}
+                onChangeText={(text) => setUserInfo(prev => ({ 
+                  ...DEFAULT_USER_INFO,
+                  ...prev, 
+                  name: text 
+                }))}
+                style={styles.textInput}
+                placeholderTextColor="#999"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Phone size={20} color="#666" style={styles.inputIcon} />
+              <TextInput
+                placeholder="Phone Number *"
+                value={currentUserInfo.phone}
+                onChangeText={(text) => setUserInfo(prev => ({ 
+                  ...DEFAULT_USER_INFO,
+                  ...prev, 
+                  phone: text.replace(/[^0-9]/g, '') 
+                }))}
+                style={styles.textInput}
+                placeholderTextColor="#999"
+                keyboardType="phone-pad"
+                maxLength={10}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.modalButton, 
+                styles.continueButtonFull,
+                (!currentUserInfo.email || !currentUserInfo.name || !currentUserInfo.phone) && styles.disabledButton
+              ]}
+              onPress={handleGuestEmail}
+              disabled={!currentUserInfo.email || !currentUserInfo.name || !currentUserInfo.phone}
+            >
+              <Text style={styles.continueButtonText}>
+                Continue to Checkout
+              </Text>
+            </TouchableOpacity>
+            
+            {!isGuestUser && (
+              <TouchableOpacity
+                style={styles.loginLink}
+                onPress={() => {
+                  setShowEmailModal(false);
+                  navigation.navigate('Login');
+                }}
+              >
+                <Text style={styles.loginLinkText}>
+                  Already have an account? Login instead
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // Render checkout confirmation modal
+  const renderCheckoutModal = () => {
+    const totals = calculateTotal();
+    const currentUserInfo = safeUserInfo();
+    
+    return (
+      <Modal
+        visible={showCheckoutModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          if (!paymentLoading) {
+            setShowCheckoutModal(false);
+          }
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Confirm Your Order</Text>
+            
+            <View style={styles.orderSummary}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Items:</Text>
+                <Text style={styles.summaryValue}>{cartItems.length}</Text>
+              </View>
+              
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Delivery to:</Text>
+                <Text style={styles.summaryValue} numberOfLines={2}>
+                  {currentUserInfo.address}, {currentUserInfo.city}
+                </Text>
+              </View>
+              
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Contact:</Text>
+                <Text style={styles.summaryValue}>{currentUserInfo.phone}</Text>
+              </View>
+              
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Email:</Text>
+                <Text style={styles.summaryValue}>{currentUserInfo.email}</Text>
+              </View>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.totalSummary}>
+                <Text style={styles.totalLabel}>Total Amount</Text>
+                <Text style={styles.totalAmount}>₹{totals.total}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.paymentNote}>
+              💳 You will be redirected to Razorpay for secure payment
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  if (!paymentLoading) {
+                    setShowCheckoutModal(false);
+                  }
+                }}
+                disabled={paymentLoading}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.payButton]}
+                onPress={handlePayment}
+                disabled={paymentLoading}
+              >
+                <Text style={styles.payButtonText}>
+                  {paymentLoading ? 'Processing...' : 'Pay ₹' + totals.total}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // ✅ FIXED: Main render with loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {renderLoading()}
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Your Cart</Text>
+        <TouchableOpacity 
+          style={styles.cartCountBadge}
+          onPress={() => navigation.navigate('Orders')}
+        >
+          <Text style={styles.cartCountText}>{cartItems.length}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {cartItems.length === 0 ? renderEmptyCart() : renderCartItems()}
+
+      {/* Modals */}
+      {renderEmailModal()}
+      {renderAddressModal()}
+      {renderCheckoutModal()}
+      
+      <Toast />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f7f9',
+  },
+  // ✅ ADDED: Loading styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f7f9',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: 30,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  cartCountBadge: {
+    backgroundColor: '#F47B20',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cartCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyCartContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: '#f9f9f9',
+  },
+  emptyCartText: {
+    fontSize: 20,
+    color: '#666',
+    marginTop: 20,
+    marginBottom: 30,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  emptyCartButton: {
+    backgroundColor: '#F47B20',
+    paddingVertical: 14,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  emptyCartButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  selectedCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  selectedCountText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  cartItemContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingVertical: 12,
+  },
+  cartItemCheckbox: {
+    paddingLeft: 16,
+    paddingRight: 12,
+    justifyContent: 'center',
+  },
+  cartItemContent: {
+    flex: 1,
+    paddingRight: 16,
+  },
+  cartItemRow: {
+    flexDirection: 'row',
+  },
+  productImage: {
+    width: 80,
+    height: 100,
+    resizeMode: 'contain',
+    borderRadius: 6,
+    backgroundColor: '#f9f9f9',
+  },
+  productDetails: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'space-between',
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000',
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  productPrice: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 6,
+  },
+  deliveryInfo: {
+    fontSize: 13,
+    color: '#4CAF50',
+    marginBottom: 10,
+    fontWeight: '500',
+  },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  quantityLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 10,
+    fontWeight: '500',
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  quantityButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f9f9f9',
+  },
+  quantityValueContainer: {
+    width: 40,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+  },
+  quantityValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  deleteButton: {
+    marginLeft: 'auto',
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 20,
+    backgroundColor: '#FFF5F5',
+  },
+  guestNotice: {
+    backgroundColor: '#FFF8E1',
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  guestNoticeTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#E65100',
+    marginBottom: 6,
+  },
+  guestNoticeText: {
+    fontSize: 14,
+    color: '#5D4037',
+    lineHeight: 20,
+  },
+  userInfoSection: {
+    backgroundColor: '#fff',
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 14,
+  },
+  emailInputButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fafafa',
+  },
+  nameInputButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fafafa',
+  },
+  emailInputContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  emailInputLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  emailInputValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  addressSection: {
+    backgroundColor: '#fff',
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addButton: {
+    color: '#F47B20',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  addressCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginBottom: 10,
+    backgroundColor: '#fafafa',
+  },
+  selectedAddressCard: {
+    borderColor: '#F47B20',
+    backgroundColor: '#FFF8F0',
+    borderWidth: 2,
+  },
+  addressRadio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+    marginRight: 14,
+  },
+  addressRadioSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#F47B20',
+  },
+  addressText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+  },
+  addAddressButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#F47B20',
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    backgroundColor: '#FFF8F0',
+  },
+  addAddressText: {
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#F47B20',
+    fontWeight: '600',
+  },
+  addressHint: {
+    fontSize: 13,
+    color: '#F44336',
+    marginTop: 10,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  deliveryModeContainer: {
+    backgroundColor: '#fff',
+    marginTop: 8,
+    padding: 16,
+    borderRadius: 8,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  deliveryModeTitle: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 16,
+  },
+  deliveryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+  },
+  deliveryOptionSelected: {
+    borderColor: '#F47B20',
+    backgroundColor: '#FFF8F0',
+  },
+  radioOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#F47B20',
+  },
+  deliveryOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  deliveryOptionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  paymentSummaryContainer: {
+    backgroundColor: '#fff',
+    marginTop: 8,
+    padding: 20,
+    borderRadius: 8,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  paymentSummaryTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 20,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  summaryItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    fontSize: 15,
+    color: '#666',
+  },
+  summaryValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#000',
+  },
+  freeDeliveryBanner: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 12,
+    alignItems: 'center',
+  },
+  freeDeliveryText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  totalLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  totalValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#F47B20',
+  },
+  continueButton: {
+    backgroundColor: '#F47B20',
+    borderRadius: 8,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc',
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  paymentSecurityNote: {
+    fontSize: 12,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxHeight: '80%',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    backgroundColor: '#fafafa',
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    height: 52,
+    fontSize: 16,
+    color: '#333',
+    paddingVertical: 0,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 6,
+  },
+  cancelButton: {
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#F47B20',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  continueButtonFull: {
+    backgroundColor: '#F47B20',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  loginLink: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  loginLinkText: {
+    color: '#F47B20',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    fontWeight: '500',
+  },
+  orderSummary: {
+    backgroundColor: '#f9f9f9',
+    padding: 20,
+    borderRadius: 8,
+    marginVertical: 16,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#ddd',
+    marginVertical: 16,
+  },
+  totalSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalAmount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#F47B20',
+  },
+  paymentNote: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  payButton: {
+    backgroundColor: '#4CAF50',
+  },
+  payButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
+export default Cart;
