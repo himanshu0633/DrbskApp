@@ -1,12 +1,12 @@
 import React from 'react';
 import RootNavigation from './src/RootNavigation';
-
+import { ToastProvider } from './src/ToastProvider';
 const App = () => {
   return (
     <>
-      <RootNavigation />
-     
-     
+      <ToastProvider>
+        <RootNavigation />
+      </ToastProvider>
     </>
   );
 };

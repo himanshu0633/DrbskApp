@@ -22,6 +22,7 @@ import RazorpayCheckout from 'react-native-razorpay';
 
 import { deleteProduct, updateData, clearProducts } from '../../store/Action';
 import axiosInstance from '../../Components/AxiosInstance';
+import API_URL from '../../../config';
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +56,9 @@ const Cart = () => {
   // Loader states
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingMessage, setProcessingMessage] = useState('');
+  
+  // User data state
+  const [userData, setUserData] = useState(null);
 
   // Ref to track if component is mounted
   const isMounted = useRef(true);
@@ -74,10 +78,26 @@ const Cart = () => {
   // Calculate item price
   const getItemPrice = (item) => {
     try {
-      let price = parseFloat(item.final_price);
-      if (!price || price <= 0 || isNaN(price)) {
-        price = parseFloat(item.price) || parseFloat(item.mrp) || 0;
+      let price = 0;
+      
+      // Check for final_price first
+      if (item.final_price) {
+        price = parseFloat(item.final_price);
+      } 
+      // Then check for price
+      else if (item.price) {
+        price = parseFloat(item.price);
       }
+      // Then check for mrp
+      else if (item.mrp) {
+        price = parseFloat(item.mrp);
+      }
+      
+      // If price is invalid, set to 0
+      if (!price || price <= 0 || isNaN(price)) {
+        price = 0;
+      }
+      
       return price;
     } catch (error) {
       console.error('Error getting item price:', error);
@@ -91,6 +111,68 @@ const Cart = () => {
     const quantity = parseInt(item.quantity) || 1;
     return acc + price * quantity;
   }, 0);
+
+  // Initialize data
+  const initializeData = useCallback(async () => {
+    try {
+      console.log('Initializing cart data...');
+      
+      // Check authentication
+      const userDataStr = await AsyncStorage.getItem('userData');
+      if (userDataStr) {
+        const parsedUserData = JSON.parse(userDataStr);
+        setIsAuthenticated(true);
+        setUserData(parsedUserData);
+        
+        // Set form data from user data
+        setFormData(prev => ({
+          ...prev,
+          email: parsedUserData?.email || '',
+          phone: parsedUserData?.phone || '',
+        }));
+        
+        console.log('User authenticated:', parsedUserData.email);
+      } else {
+        setIsAuthenticated(false);
+        setUserData(null);
+        console.log('User not authenticated - guest mode');
+      }
+
+      // Load saved data from AsyncStorage
+      const savedEmail = await AsyncStorage.getItem('guestEmail') || '';
+      const savedPhone = await AsyncStorage.getItem('guestPhone') || '';
+      const savedAddressesStr = await AsyncStorage.getItem('guestAddresses');
+      const savedAddresses = savedAddressesStr ? JSON.parse(savedAddressesStr) : [];
+      
+      // Set initial form data
+      setFormData(prev => ({
+        ...prev,
+        email: savedEmail || prev.email,
+        phone: savedPhone || prev.phone
+      }));
+      
+      setAddresses(savedAddresses);
+      
+      console.log('Loaded saved addresses:', savedAddresses.length);
+      
+      // Auto-select first address if available
+      if (savedAddresses.length > 0 && !formData.selectedAddress) {
+        const firstAddress = savedAddresses[0];
+        const addressValue = typeof firstAddress === 'object' ? firstAddress.fullAddress : firstAddress;
+        const addressEmail = typeof firstAddress === 'object' ? firstAddress.email : savedEmail;
+        const addressPhone = typeof firstAddress === 'object' ? firstAddress.phone : savedPhone;
+        
+        setFormData(prev => ({
+          ...prev,
+          selectedAddress: addressValue,
+          email: addressEmail || savedEmail || prev.email,
+          phone: addressPhone || savedPhone || prev.phone
+        }));
+      }
+    } catch (error) {
+      console.error('Error initializing data:', error);
+    }
+  }, [formData.selectedAddress]);
 
   // Load data on focus
   useFocusEffect(
@@ -118,60 +200,51 @@ const Cart = () => {
       return () => {
         isActive = false;
       };
-    }, [])
+    }, [initializeData])
   );
 
-  const initializeData = async () => {
+  // Load states
+  const loadStates = async () => {
     try {
-      // Check authentication
-      const userDataStr = await AsyncStorage.getItem('userData');
-      if (userDataStr) {
-        setIsAuthenticated(true);
-        const userData = JSON.parse(userDataStr);
-        setFormData(prev => ({
-          ...prev,
-          email: userData?.email || '',
-          phone: userData?.phone || '',
-        }));
-      } else {
-        setIsAuthenticated(false);
+      console.log('Loading states...');
+      const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/states', {
+        country: 'India'
+      });
+      if (res.data.data && res.data.data.states) {
+        const stateNames = res.data.data.states.map(s => s.name);
+        setStates(stateNames);
+        console.log('States loaded:', stateNames.length);
       }
-
-      // Load saved data from AsyncStorage
-      const savedEmail = await AsyncStorage.getItem('guestEmail') || '';
-      const savedPhone = await AsyncStorage.getItem('guestPhone') || '';
-      const savedAddressesStr = await AsyncStorage.getItem('guestAddresses');
-      const savedAddresses = savedAddressesStr ? JSON.parse(savedAddressesStr) : [];
-      
-      // Set initial form data
-      setFormData(prev => ({
-        ...prev,
-        email: savedEmail || prev.email,
-        phone: savedPhone || prev.phone
-      }));
-      
-      setAddresses(savedAddresses);
-      
-      // Auto-select first address if available
-      if (savedAddresses.length > 0 && !formData.selectedAddress) {
-        const firstAddress = savedAddresses[0];
-        const addressValue = typeof firstAddress === 'object' ? firstAddress.fullAddress : firstAddress;
-        const addressEmail = typeof firstAddress === 'object' ? firstAddress.email : savedEmail;
-        const addressPhone = typeof firstAddress === 'object' ? firstAddress.phone : savedPhone;
-        
-        setFormData(prev => ({
-          ...prev,
-          selectedAddress: addressValue,
-          email: addressEmail || savedEmail || prev.email,
-          phone: addressPhone || savedPhone || prev.phone
-        }));
-      }
-    } catch (error) {
-      console.error('Error initializing data:', error);
+    } catch (err) {
+      console.error('Error fetching states', err);
     }
   };
 
-  const handleQuantityChange = (itemId, newQuantity) => {
+  // Handle product click - navigate to product details
+  const handleProductClick = useCallback((item) => {
+    // Create a normalized product object for the product details page
+    const productForDetails = {
+      ...item,
+      // Ensure we have all required fields for product details page
+      category: item.category || 'General',
+      description: item.description || '',
+      variants: item.variants || [],
+      media: item.media || [],
+      price: getItemPrice(item),
+    };
+    
+    // Navigate to Products page with the selected product
+    navigation.navigate('Products', {
+      selectedProduct: productForDetails
+    });
+  }, [navigation, getItemPrice]);
+
+  // Handle quantity change
+  const handleQuantityChange = useCallback((itemId, newQuantity, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
     if (newQuantity < 1) return;
     const updatedItem = cartItems.find((item) => item._id === itemId);
     if (updatedItem) {
@@ -183,16 +256,34 @@ const Cart = () => {
         text2: 'Item quantity updated!',
       });
     }
-  };
+  }, [cartItems, dispatch]);
 
-  const handleRemoveItem = (itemId) => {
-    dispatch(deleteProduct(itemId));
-    Toast.show({
-      type: 'info',
-      text1: 'Removed',
-      text2: 'Item removed from cart.',
-    });
-  };
+  // Handle remove item
+  const handleRemoveItem = useCallback((itemId, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    Alert.alert(
+      'Remove Item',
+      'Are you sure you want to remove this item from your cart?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive',
+          onPress: () => {
+            dispatch(deleteProduct(itemId));
+            Toast.show({
+              type: 'info',
+              text1: 'Removed',
+              text2: 'Item removed from cart.',
+            });
+          }
+        }
+      ]
+    );
+  }, [dispatch]);
 
   // Handle email change
   const handleEmailChange = (email) => {
@@ -217,35 +308,26 @@ const Cart = () => {
     }
   };
 
-  // Fetch states
-  const loadStates = async () => {
-    try {
-      const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/states', {
-        country: 'India'
-      });
-      if (res.data.data && res.data.data.states) {
-        setStates(res.data.data.states.map(s => s.name));
-      }
-    } catch (err) {
-      console.error('Error fetching states', err);
-    }
-  };
-
   // Fetch cities when state changes
   const fetchCities = async (stateName) => {
+    if (!stateName) return;
+    
     try {
+      console.log('Fetching cities for state:', stateName);
       const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/state/cities', {
         country: 'India',
         state: stateName
       });
       if (res.data.data) {
         setCities(res.data.data);
+        console.log('Cities loaded:', res.data.data.length);
       }
     } catch (err) {
       console.error('Error fetching cities', err);
     }
   };
 
+  // Handle add address
   const handleAddAddress = async () => {
     setLoading(true);
     
@@ -271,7 +353,18 @@ const Cart = () => {
       return;
     }
 
-    // Address object बनाएं
+    // Validate address fields
+    if (!formData.flat || !formData.landmark || !formData.city || !formData.state) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Please fill all address fields',
+      });
+      setLoading(false);
+      return;
+    }
+
+    // Create address object
     const addressObject = {
       flat: formData.flat,
       landmark: formData.landmark,
@@ -284,7 +377,7 @@ const Cart = () => {
     };
     
     try {
-      // AsyncStorage से existing addresses निकालें
+      // Get existing addresses from AsyncStorage
       const existingAddressesStr = await AsyncStorage.getItem('guestAddresses');
       const existingAddresses = existingAddressesStr ? JSON.parse(existingAddressesStr) : [];
       const updatedAddresses = [...existingAddresses, addressObject];
@@ -293,10 +386,14 @@ const Cart = () => {
       await AsyncStorage.setItem('guestAddresses', JSON.stringify(updatedAddresses));
       
       // Also save email and phone separately
-      await AsyncStorage.setItem('guestEmail', formData.email);
-      await AsyncStorage.setItem('guestPhone', formData.phone);
+      if (formData.email) {
+        await AsyncStorage.setItem('guestEmail', formData.email);
+      }
+      if (formData.phone) {
+        await AsyncStorage.setItem('guestPhone', formData.phone);
+      }
       
-      // State update करें
+      // Update state
       setAddresses(updatedAddresses);
       setFormData(prev => ({
         ...prev,
@@ -325,6 +422,7 @@ const Cart = () => {
     }
   };
 
+  // Handle checkout
   const handleCheckout = async () => {
     console.log("=== STARTING CHECKOUT PROCESS ===");
     
@@ -381,7 +479,7 @@ const Cart = () => {
 
       // Get email from form or AsyncStorage
       let checkoutEmail = formData.email;
-      if (!checkoutEmail) {
+      if (!checkoutEmail || !isValidEmail(checkoutEmail)) {
         checkoutEmail = await AsyncStorage.getItem('guestEmail') || '';
       }
       
@@ -398,7 +496,7 @@ const Cart = () => {
       // Get phone number
       let phoneNumber = formData.phone?.toString().trim();
 
-      if (!phoneNumber) {
+      if (!phoneNumber || phoneNumber.length !== 10) {
         // Try to get from saved addresses
         const selectedAddressObj = addresses.find(addr => 
           typeof addr === 'object' ? addr.fullAddress === formData.selectedAddress : addr === formData.selectedAddress
@@ -430,11 +528,11 @@ const Cart = () => {
         
         console.log('Processing item:', {
           name: item.name,
+          id: item._id,
+          quantity: qty,
+          price: price,
           final_price: item.final_price,
-          price: item.price,
-          mrp: item.mrp,
-          calculatedPrice: price,
-          quantity: qty
+          calculatedPrice: price
         });
 
         return {
@@ -508,6 +606,8 @@ const Cart = () => {
 
       const { order: razorpayOrder } = orderResponse.data;
       console.log("✅ Razorpay order created:", razorpayOrder.id);
+      console.log("Order amount:", razorpayOrder.amount);
+      console.log("Order currency:", razorpayOrder.currency);
 
       // Show processing loader
       setIsProcessing(true);
@@ -518,16 +618,16 @@ const Cart = () => {
       const options = {
         description: 'Order Payment - Dr BSK',
         currency: razorpayOrder.currency || 'INR',
-        key: "rzp_test_RpQ1JwSJEy6yAw",
+        key: "rzp_live_RsAhVxy2ldrBIl",
         amount: razorpayOrder.amount.toString(),
         name: "Dr BSK",
         order_id: razorpayOrder.id,
         prefill: {
-          name: 'Customer',
+          name: userData?.name || checkoutEmail.split('@')[0],
           email: checkoutEmail,
-          contact: `+91${phoneNumber}`
+          contact: `+91${phoneNumber}`,
         },
-        theme: { color: '#3f51b5' },
+        theme: { color: '#FF6B00' },
         notes: {
           order_type: 'pharma_order',
           items_count: cartItems.length.toString(),
@@ -538,10 +638,9 @@ const Cart = () => {
       console.log("Opening Razorpay checkout...");
       console.log("Razorpay options:", options);
       
-      try {
-        const razorpayData = await RazorpayCheckout.open(options);
-        
-        console.log("Razorpay response:", razorpayData);
+      // Open Razorpay
+      RazorpayCheckout.open(options).then(async (razorpayData) => {
+        console.log("Razorpay payment success:", razorpayData);
         
         if (!razorpayData.razorpay_payment_id) {
           throw new Error('Payment ID not received from Razorpay');
@@ -573,10 +672,9 @@ const Cart = () => {
           
           // Clear cart
           dispatch(clearProducts());
-          await AsyncStorage.removeItem('cartItems');
           
           // Clear guest addresses if guest user
-          if (!isAuthenticated) {
+          if (isGuest) {
             await AsyncStorage.removeItem('guestAddresses');
             await AsyncStorage.removeItem('guestEmail');
             await AsyncStorage.removeItem('guestPhone');
@@ -593,6 +691,9 @@ const Cart = () => {
           setTimeout(() => {
             // Hide loader and navigate
             setIsProcessing(false);
+            setPaymentProcessing(false);
+            setCheckoutLoading(false);
+            
             navigation.navigate('Success', {
               orderId: verifyResponse.data.orderId,
               orderDetails: verifyResponse.data.orderDetails
@@ -602,15 +703,20 @@ const Cart = () => {
         } else {
           console.error("❌ Order creation failed:", verifyResponse.data.message);
           setIsProcessing(false);
+          setPaymentProcessing(false);
+          setCheckoutLoading(false);
+          
           Toast.show({
             type: 'error',
             text1: 'Error',
             text2: verifyResponse.data.message || 'Failed to create order',
           });
         }
-      } catch (error) {
+      }).catch((error) => {
         console.error("❌ Razorpay checkout error:", error);
         setIsProcessing(false);
+        setPaymentProcessing(false);
+        setCheckoutLoading(false);
         
         // Handle Razorpay errors
         if (error.error && typeof error.error === 'object') {
@@ -628,6 +734,13 @@ const Cart = () => {
             text1: 'Payment Failed',
             text2: errorMsg,
           });
+        } else if (error.error && typeof error.error === 'string') {
+          // If error is a string
+          Toast.show({
+            type: 'error',
+            text1: 'Payment Failed',
+            text2: error.error,
+          });
         } else {
           Toast.show({
             type: 'error',
@@ -635,15 +748,11 @@ const Cart = () => {
             text2: 'Payment process failed. Please try again.',
           });
         }
-      } finally {
-        setPaymentProcessing(false);
-        setCheckoutLoading(false);
-      }
+      });
 
     } catch (error) {
       console.error('=== CHECKOUT ERROR ===');
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
+      console.error('Error:', error);
       
       let errorMessage = 'Checkout failed. Please try again.';
 
@@ -678,33 +787,78 @@ const Cart = () => {
   };
 
   // Get product image URL
-  const getProductImageUrl = (media) => {
+  const getProductImageUrl = (item) => {
     try {
-      if (!media || !Array.isArray(media) || media.length === 0 || !media[0]?.url) {
-        return 'https://via.placeholder.com/80x100?text=No+Image';
+      // Priority 1: Check if item has media array with URL
+      if (item.media && Array.isArray(item.media) && item.media.length > 0) {
+        const firstMedia = item.media[0];
+        if (firstMedia && firstMedia.url) {
+          // Check if URL is already absolute
+          if (firstMedia.url.startsWith('http://') || firstMedia.url.startsWith('https://')) {
+            return firstMedia.url;
+          }
+          
+          // If relative URL, prepend API_URL
+          return `${API_URL}${firstMedia.url}`;
+        }
       }
       
-      const imageUrl = media[0].url;
-      
-      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-        return imageUrl;
+      // Priority 2: Check if product has direct image property
+      if (item.image) {
+        if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
+          return item.image;
+        } else {
+          return `${API_URL}${item.image}`;
+        }
       }
       
-      return imageUrl;
+      // Priority 3: Check for product_image
+      if (item.product_image) {
+        if (item.product_image.startsWith('http://') || item.product_image.startsWith('https://')) {
+          return item.product_image;
+        } else {
+          return `${API_URL}${item.product_image}`;
+        }
+      }
+      
+      // Priority 4: Check for selectedVariant image
+      if (item.selectedVariant && item.selectedVariant.image) {
+        if (item.selectedVariant.image.startsWith('http://') || item.selectedVariant.image.startsWith('https://')) {
+          return item.selectedVariant.image;
+        } else {
+          return `${API_URL}${item.selectedVariant.image}`;
+        }
+      }
+      
+      // Fallback to placeholder
+      return 'https://via.placeholder.com/100x100?text=No+Image';
     } catch (error) {
       console.error('Error getting product image:', error);
-      return 'https://via.placeholder.com/80x100?text=Error';
+      return 'https://via.placeholder.com/100x100?text=Error';
     }
   };
 
   // Clear cart
   const clearCart = () => {
-    dispatch(clearProducts());
-    Toast.show({
-      type: 'info',
-      text1: 'Cart Cleared',
-      text2: 'Your cart has been cleared.',
-    });
+    Alert.alert(
+      'Clear Cart',
+      'Are you sure you want to remove all items from your cart?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Clear All', 
+          style: 'destructive',
+          onPress: () => {
+            dispatch(clearProducts());
+            Toast.show({
+              type: 'info',
+              text1: 'Cart Cleared',
+              text2: 'Your cart has been cleared.',
+            });
+          }
+        }
+      ]
+    );
   };
 
   // Render address item
@@ -720,22 +874,34 @@ const Cart = () => {
           isSelected && styles.selectedAddressCard
         ]}
         onPress={() => {
-          setFormData(prev => ({ 
-            ...prev, 
+          const newFormData = { 
+            ...formData, 
             selectedAddress: addressText
-          }));
+          };
           
           // If it's an object address, update email and phone
           if (typeof addr === 'object') {
             if (addr.email) {
-              setFormData(prev => ({ ...prev, email: addr.email }));
-              AsyncStorage.setItem('guestEmail', addr.email);
+              newFormData.email = addr.email;
             }
             if (addr.phone) {
-              setFormData(prev => ({ ...prev, phone: addr.phone }));
-              AsyncStorage.setItem('guestPhone', addr.phone);
+              newFormData.phone = addr.phone;
             }
           }
+          
+          setFormData(newFormData);
+          
+          // Save to AsyncStorage
+          (async () => {
+            if (typeof addr === 'object') {
+              if (addr.email) {
+                await AsyncStorage.setItem('guestEmail', addr.email);
+              }
+              if (addr.phone) {
+                await AsyncStorage.setItem('guestPhone', addr.phone);
+              }
+            }
+          })();
         }}
       >
         <View style={styles.addressRadio}>
@@ -764,7 +930,7 @@ const Cart = () => {
     >
       <View style={styles.processingOverlay}>
         <View style={styles.processingModal}>
-          <ActivityIndicator size="large" color="#3f51b5" />
+          <ActivityIndicator size="large" color="#FF6B00" />
           <Text style={styles.processingTitle}>Processing Your Order</Text>
           <Text style={styles.processingMessage}>{processingMessage}</Text>
           <View style={styles.processingProgress}>
@@ -795,7 +961,14 @@ const Cart = () => {
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Add Delivery Address</Text>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>
+              {isAuthenticated ? 'Add New Address' : 'Add Delivery Address'}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              Please fill in all required fields
+            </Text>
+          </View>
           
           <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
             {/* Email Field */}
@@ -809,8 +982,10 @@ const Cart = () => {
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
-              {formData.email && !isValidEmail(formData.email) && (
+              {formData.email && !isValidEmail(formData.email) ? (
                 <Text style={styles.errorText}>Please enter a valid email</Text>
+              ) : (
+                <Text style={styles.helperText}>Required for order confirmation and updates</Text>
               )}
             </View>
 
@@ -902,6 +1077,9 @@ const Cart = () => {
                   {formData.city || (formData.state ? 'Select City' : 'Select state first')}
                 </Text>
               </TouchableOpacity>
+              {!formData.state && (
+                <Text style={styles.helperText}>Please select state first</Text>
+              )}
             </View>
 
             {/* Country Field */}
@@ -930,10 +1108,29 @@ const Cart = () => {
                   maxLength={10}
                 />
               </View>
-              {formData.phone.length > 0 && formData.phone.length !== 10 && (
-                <Text style={styles.errorText}>Phone must be 10 digits</Text>
+              {formData.phone.length > 0 && formData.phone.length !== 10 ? (
+                <Text style={styles.errorText}>Phone number must be exactly 10 digits</Text>
+              ) : (
+                <Text style={styles.helperText}>Required for delivery updates</Text>
               )}
             </View>
+
+            {/* Required Note */}
+            <View style={styles.requiredNote}>
+              <Text style={styles.requiredStar}>*</Text>
+              <Text style={styles.requiredText}>Required fields</Text>
+            </View>
+
+            {/* Guest Info Note */}
+            {!isAuthenticated && (
+              <View style={styles.guestInfoNote}>
+                <Text style={styles.guestInfoIcon}>ⓘ</Text>
+                <Text style={styles.guestInfoText}>
+                  Your address will be saved locally for this session only. 
+                  <Text style={styles.guestInfoBold}> Sign up</Text> to save addresses permanently.
+                </Text>
+              </View>
+            )}
           </ScrollView>
 
           <View style={styles.modalButtons}>
@@ -971,7 +1168,9 @@ const Cart = () => {
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.saveButtonText}>Save Address</Text>
+                <Text style={styles.saveButtonText}>
+                  {isAuthenticated ? 'Add Address' : 'Save Address'}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -985,6 +1184,9 @@ const Cart = () => {
     if (cartItems.length === 0) {
       return (
         <View style={styles.emptyCart}>
+          <View style={styles.emptyCartIcon}>
+            <Text style={styles.emptyCartEmoji}>🛒</Text>
+          </View>
           <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
           <Text style={styles.emptyCartText}>Add some items to get started</Text>
           <TouchableOpacity 
@@ -997,28 +1199,44 @@ const Cart = () => {
       );
     }
 
-    return cartItems.map((item) => {
+    return cartItems.map((item, index) => {
       const itemPrice = getItemPrice(item);
+      const discount = item.discount || 0;
+      const imageUrl = getProductImageUrl(item);
       
       return (
-        <View key={item._id} style={styles.cartItem}>
-          <Image 
-            source={{ uri: getProductImageUrl(item.media) }} 
-            style={styles.productImage}
-            resizeMode="contain"
-          />
+        <TouchableOpacity
+          key={`${item._id}_${index}_${item.selectedVariant?.label || 'default'}`}
+          style={styles.cartItem}
+          onPress={() => handleProductClick(item)}
+          activeOpacity={0.7}
+        >
+          {/* Product Image */}
+          <View style={styles.imageContainer}>
+            <Image 
+              source={{ 
+                uri: imageUrl,
+                cache: 'force-cache'
+              }} 
+              style={styles.productImage}
+              resizeMode="contain"
+            />
+          </View>
 
           <View style={styles.itemDetails}>
             <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+            {item.selectedVariant?.label && (
+              <Text style={styles.itemVariant}>{item.selectedVariant.label}</Text>
+            )}
             <Text style={styles.itemDescription}>{item.quantity || 1} Pack</Text>
 
             <View style={styles.itemPricing}>
               <Text style={styles.currentPrice}>
                 ₹{itemPrice.toFixed(2)}
               </Text>
-              {item.discount && item.discount > 0 && (
+              {discount > 0 && (
                 <Text style={styles.discount}>
-                  {Math.round(item.discount)}% OFF
+                  {Math.round(discount)}% OFF
                 </Text>
               )}
             </View>
@@ -1028,7 +1246,7 @@ const Cart = () => {
             <View style={styles.quantityControls}>
               <TouchableOpacity
                 style={[styles.quantityBtn, (item.quantity || 1) <= 1 && styles.disabledBtn]}
-                onPress={() => handleQuantityChange(item._id, (item.quantity || 1) - 1)}
+                onPress={(e) => handleQuantityChange(item._id, (item.quantity || 1) - 1, e)}
                 disabled={(item.quantity || 1) <= 1}
               >
                 <Text style={styles.quantityBtnText}>-</Text>
@@ -1036,28 +1254,28 @@ const Cart = () => {
               <Text style={styles.quantity}>{item.quantity || 1}</Text>
               <TouchableOpacity
                 style={styles.quantityBtn}
-                onPress={() => handleQuantityChange(item._id, (item.quantity || 1) + 1)}
+                onPress={(e) => handleQuantityChange(item._id, (item.quantity || 1) + 1, e)}
               >
                 <Text style={styles.quantityBtnText}>+</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity 
               style={styles.removeBtn}
-              onPress={() => handleRemoveItem(item._id)}
+              onPress={(e) => handleRemoveItem(item._id, e)}
             >
               <Text style={styles.removeBtnText}>Remove</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </TouchableOpacity>
       );
     });
   };
 
-  if (loading) {
+  if (loading && cartItems.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3f51b5" />
+          <ActivityIndicator size="large" color="#FF6B00" />
           <Text style={styles.loadingText}>Loading your cart...</Text>
         </View>
       </SafeAreaView>
@@ -1077,14 +1295,17 @@ const Cart = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Back</Text>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         
         <Text style={styles.headerTitle}>Shopping Cart</Text>
         
         {cartItems.length > 0 && (
-          <TouchableOpacity onPress={clearCart}>
-            <Text style={styles.clearAllText}>Clear All</Text>
+          <TouchableOpacity 
+            style={styles.clearAllButton}
+            onPress={clearCart}
+          >
+            {/* <Text style={styles.clearAllText}>Clear All</Text> */}
           </TouchableOpacity>
         )}
       </View>
@@ -1103,7 +1324,14 @@ const Cart = () => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Cart Items */}
         <View style={styles.cartItemsSection}>
-          <Text style={styles.sectionTitle}>Your Items ({cartItems.length})</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Your Items ({cartItems.length})</Text>
+            {cartItems.length > 0 && (
+              <TouchableOpacity onPress={clearCart}>
+                <Text style={styles.clearCartText}>Clear Cart</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {renderCartItems()}
         </View>
 
@@ -1126,14 +1354,14 @@ const Cart = () => {
               onPress={() => setShowAddressModal(true)}
             >
               <Text style={styles.addAddressBtnText}>
-                {addresses.length > 0 ? 'Add Another Address' : 'Add Address'}
+                ➕ {addresses.length > 0 ? 'Add Another Address' : 'Add Address'}
               </Text>
             </TouchableOpacity>
 
             {/* Saved Addresses */}
             {addresses.length > 0 ? (
               <View style={styles.savedAddresses}>
-                <Text style={styles.sectionSubtitle}>Saved Addresses</Text>
+                <Text style={styles.sectionSubtitle}>📍 Saved Addresses</Text>
                 {addresses.map((addr, index) => renderAddressItem(addr, index))}
               </View>
             ) : (
@@ -1145,16 +1373,16 @@ const Cart = () => {
             {/* Order Summary Details */}
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
-                <Text>Subtotal ({cartItems.length} items)</Text>
-                <Text>₹{totalPrice.toFixed(2)}</Text>
+                <Text style={styles.summaryLabel}>Subtotal ({cartItems.length} items)</Text>
+                <Text style={styles.summaryValue}>₹{totalPrice.toFixed(2)}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text>Shipping</Text>
-                <Text style={styles.freeShipping}>FREE</Text>
+                <Text style={styles.summaryLabel}>Shipping</Text>
+                <Text style={[styles.summaryValue, styles.freeShipping]}>FREE</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text>Tax</Text>
-                <Text>₹0.00</Text>
+                <Text style={styles.summaryLabel}>Tax</Text>
+                <Text style={styles.summaryValue}>₹0.00</Text>
               </View>
             </View>
 
@@ -1206,6 +1434,20 @@ const Cart = () => {
               </Text>
             )}
 
+            {/* Login Suggestion */}
+            {!isAuthenticated && (
+              <View style={styles.loginSuggestion}>
+                <Text style={styles.loginSuggestionText}>
+                  <Text 
+                    style={styles.loginSuggestionLink}
+                    onPress={() => navigation.navigate('Login')}
+                  >
+                    Login
+                  </Text> for order tracking and faster checkout next time.
+                </Text>
+              </View>
+            )}
+
             {/* Security Badges */}
             <View style={styles.securityBadges}>
               <Text style={styles.badge}>🔒 Secure Payment</Text>
@@ -1221,7 +1463,7 @@ const Cart = () => {
   );
 };
 
-// Styles (same as previous code, no changes needed)
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -1246,23 +1488,32 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   backButton: {
     padding: 4,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: 24,
     color: '#333',
+    fontWeight: 'bold',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
   },
+  clearAllButton: {
+    padding: 4,
+  },
   clearAllText: {
     fontSize: 14,
     color: '#ff4444',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   loginPrompt: {
     backgroundColor: '#e3f2fd',
@@ -1272,12 +1523,13 @@ const styles = StyleSheet.create({
   },
   loginPromptText: {
     fontSize: 14,
-    color: '#1565c0',
+    color: '#FF6B00',
     textAlign: 'center',
   },
   loginLink: {
     fontWeight: 'bold',
-    color: '#0d47a1',
+    color: '#FF6B00',
+    textDecorationLine: 'underline',
   },
   scrollView: {
     flex: 1,
@@ -1286,17 +1538,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     margin: 16,
+    marginBottom: 8,
     padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
+  },
+  clearCartText: {
+    fontSize: 14,
+    color: '#ff4444',
+    fontWeight: '500',
   },
   emptyCart: {
     alignItems: 'center',
     paddingVertical: 40,
+  },
+  emptyCartIcon: {
+    marginBottom: 16,
+  },
+  emptyCartEmoji: {
+    fontSize: 48,
   },
   emptyCartTitle: {
     fontSize: 20,
@@ -1310,7 +1584,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   continueShoppingBtn: {
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#FF6B00',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -1325,21 +1599,41 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  productImage: {
+  imageContainer: {
     width: 80,
     height: 80,
+    backgroundColor: '#f8f9fa',
     borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
   },
   itemDetails: {
     flex: 1,
+    paddingRight: 8,
   },
   itemName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  itemVariant: {
+    fontSize: 12,
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
     marginBottom: 4,
   },
   itemDescription: {
@@ -1350,6 +1644,7 @@ const styles = StyleSheet.create({
   itemPricing: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 4,
   },
   currentPrice: {
     fontSize: 16,
@@ -1367,6 +1662,8 @@ const styles = StyleSheet.create({
   },
   itemActions: {
     alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 80,
   },
   quantityControls: {
     flexDirection: 'row',
@@ -1374,17 +1671,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderRadius: 6,
     overflow: 'hidden',
-    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   quantityBtn: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
   },
   disabledBtn: {
-    opacity: 0.5,
+    backgroundColor: '#f5f5f5',
   },
   quantityBtnText: {
     fontSize: 18,
@@ -1392,14 +1690,17 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   quantity: {
-    width: 40,
+    width: 32,
     textAlign: 'center',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#333',
+    backgroundColor: '#fff',
+    paddingVertical: 6,
   },
   removeBtn: {
-    padding: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   removeBtnText: {
     fontSize: 12,
@@ -1410,8 +1711,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 8,
     margin: 16,
-    padding: 16,
     marginTop: 8,
+    padding: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
   summaryTitle: {
     fontSize: 20,
@@ -1428,9 +1734,10 @@ const styles = StyleSheet.create({
   guestNoticeText: {
     fontSize: 14,
     color: '#2e7d32',
+    textAlign: 'center',
   },
   addAddressBtn: {
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#FF6B00',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -1461,7 +1768,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa',
   },
   selectedAddressCard: {
-    borderColor: '#3f51b5',
+    borderColor: '#FF6B00',
     backgroundColor: '#e8eaf6',
   },
   addressRadio: {
@@ -1479,7 +1786,7 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#FF6B00',
   },
   addressDetails: {
     flex: 1,
@@ -1504,6 +1811,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     marginVertical: 12,
+    paddingVertical: 8,
   },
   summaryDetails: {
     marginVertical: 16,
@@ -1512,6 +1820,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  summaryValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
   freeShipping: {
     color: '#4caf50',
@@ -1536,14 +1853,19 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#3f51b5',
+    color: '#FF6B00',
   },
   checkoutBtn: {
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#FF6B00',
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   checkoutBtnText: {
     color: '#fff',
@@ -1555,6 +1877,22 @@ const styles = StyleSheet.create({
     color: '#f57c00',
     textAlign: 'center',
     marginBottom: 12,
+  },
+  loginSuggestion: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  loginSuggestionText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+  },
+  loginSuggestionLink: {
+    color: '#FF6B00',
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
   securityBadges: {
     flexDirection: 'row',
@@ -1605,7 +1943,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#FF6B00',
   },
   progressSteps: {
     flexDirection: 'row',
@@ -1632,16 +1970,27 @@ const styles = StyleSheet.create({
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 24,
+    padding: 20,
     width: '100%',
     maxHeight: '80%',
+  },
+  modalHeader: {
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 16,
     textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 4,
   },
   modalScroll: {
     maxHeight: 400,
@@ -1671,6 +2020,12 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: '#f44336',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#666',
     marginTop: 4,
     marginLeft: 4,
   },
@@ -1725,6 +2080,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  requiredNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  requiredStar: {
+    color: '#d32f2f',
+    fontWeight: '700',
+    fontSize: 16,
+    marginRight: 4,
+  },
+  requiredText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  guestInfoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d1ecf1',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#bee5eb',
+  },
+  guestInfoIcon: {
+    fontSize: 16,
+    color: '#0c5460',
+    marginRight: 8,
+  },
+  guestInfoText: {
+    fontSize: 14,
+    color: '#0c5460',
+    flex: 1,
+  },
+  guestInfoBold: {
+    fontWeight: 'bold',
+  },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1749,7 +2143,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 8,
-    backgroundColor: '#3f51b5',
+    backgroundColor: '#FF6B00',
     alignItems: 'center',
   },
   disabledButton: {

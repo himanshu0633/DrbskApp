@@ -59,9 +59,7 @@ import axiosInstance from '../../Components/AxiosInstance';
 import Geolocation from 'react-native-geolocation-service';
 import API_URL from '../../../config';
 import { useNavigation } from '@react-navigation/native';
-import { PermissionsAndroid, Linking } from 'react-native';
-
-
+import { PermissionsAndroid, Linking, Alert } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -131,157 +129,64 @@ const rs = (size, factor = 0.5) => {
   return size + ((width / 400) - 1) * size * factor;
 };
 
-const Header = () => {
+// Updated Header with integrated location
+const Header = ({ location, onLocationPress }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   
   return (
     <View style={styles.header}>
-      <View style={styles.headerInner}>
-        <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)}>
+      <View style={styles.headerContent}>
+        {/* Logo and Location in same row */}
+        <View style={styles.logoLocationRow}>
           <Image source={require('../../assets/Logo.png')} style={styles.logo} />
-        </TouchableOpacity>
-
+          
+          <View style={styles.verticalDivider} />
+          
+          <TouchableOpacity 
+            style={styles.locationCompact}
+            onPress={onLocationPress}
+          >
+            <View style={styles.locationInfoCompact}>
+              <Text style={styles.deliverToCompact}>Deliver to</Text>
+              <View style={styles.locationRowCompact}>
+                <MapPin size={rs(12)} color="#FF6B00" />
+                <Text style={styles.locationTextCompact} numberOfLines={1}>
+                  {location}
+                </Text>
+              </View>
+            </View>
+            <ChevronDown size={rs(14)} color="#777" />
+          </TouchableOpacity>
+        </View>
+        
+        {/* Icons on right */}
+        {/* <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.iconButton}>
+            <Bell size={rs(20)} color="#333" />
+            <View style={styles.notificationBadge}>
+              <Text style={styles.badgeText}>3</Text>
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.iconButton}>
+            <ShoppingCart size={rs(20)} color="#333" />
+            <View style={styles.cartBadge}>
+              <Text style={styles.badgeText}>5</Text>
+            </View>
+          </TouchableOpacity>
+        </View> */}
       </View>
     </View>
   );
 };
 
-// Location bar with delivery address
-
-const LocationBar = () => {
-  const [location, setLocation] = useState('Detecting location…');
-  const [status, setStatus] = useState('init');
-
-  // Inline debug box (safe to keep or remove later)
-  const DebugBox = ({ text }) => (
-    <View style={{ marginHorizontal: 15, marginTop: 6, padding: 8, backgroundColor: '#fff3cd', borderColor: '#ffeeba', borderWidth: 1, borderRadius: 6 }}>
-      <Text style={{ color: '#856404', fontSize: 12 }}>{text}</Text>
-      <TouchableOpacity
-        onPress={() => Linking.openSettings()}
-        style={{ marginTop: 6, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: '#FF6B00', borderRadius: 6, alignSelf: 'flex-start' }}
-      >
-        <Text style={{ color: '#FF6B00' }}>Open App Settings</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  useEffect(() => {
-    (async () => {
-      if (Platform.OS === 'android') {
-        await requestAndroidLocation();
-      } else {
-        // iOS only
-        const auth = await Geolocation.requestAuthorization('whenInUse');
-        setStatus(`iOS auth: ${auth}`);
-        if (auth === 'granted') getCurrentLocation();
-        else setLocation('Permission denied');
-      }
-    })();
-  }, []);
-
-  const requestAndroidLocation = async () => {
-    try {
-      const fineHas = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
-      const coarseHas = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION);
-
-      if (!fineHas && !coarseHas) {
-        const result = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
-        ]);
-
-        const fine = result['android.permission.ACCESS_FINE_LOCATION'];
-        const coarse = result['android.permission.ACCESS_COARSE_LOCATION'];
-        setStatus(`fine=${fine}, coarse=${coarse}`);
-
-        const NEVER = PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
-        const GRANTED = PermissionsAndroid.RESULTS.GRANTED;
-
-        if (fine === NEVER || coarse === NEVER) {
-          setLocation('Permission permanently denied');
-          return; // user must enable via Settings (button above)
-        }
-        if (fine !== GRANTED && coarse !== GRANTED) {
-          setLocation('Permission denied');
-          return;
-        }
-      } else {
-        setStatus(`already granted fine=${fineHas}, coarse=${coarseHas}`);
-      }
-
-      getCurrentLocation();
-    } catch (e) {
-      setStatus(`perm error: ${String(e)}`);
-      setLocation('Permission error');
-    }
-  };
-
-  const getCurrentLocation = () => {
-    Geolocation.getCurrentPosition(
-      pos => {
-        const { latitude, longitude } = pos.coords;
-        setStatus(`coords: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-        fetchAddressFromCoords(latitude, longitude);
-      },
-      err => {
-        // err.code 1=PERMISSION_DENIED, 2=POSITION_UNAVAILABLE (GPS off), 3=TIMEOUT
-        setStatus(`loc error code=${err?.code} msg=${err?.message}`);
-        setLocation(err?.code === 2 ? 'Turn on device location' : 'Unable to get location');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
-        forceRequestLocation: true,
-        showLocationDialog: true,
-      }
-    );
-  };
-
-  const fetchAddressFromCoords = async (lat, lon) => {
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
-        { headers: { 'User-Agent': 'your.app.id/1.0 (RN)' } }
-      );
-      const data = await res.json();
-      setLocation(data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-    } catch (e) {
-      setStatus(`reverse error: ${String(e)}`);
-      setLocation(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-    }
-  };
-
-  return (
-    <>
-      <TouchableOpacity style={styles.locationBar}>
-        <View style={styles.locationLeft}>
-          <MapPin size={rs(18)} color="#FF6B00" />
-          <View>
-            <Text style={styles.deliverToText}>Deliver to:</Text>
-            <Text style={styles.locationText}>{location}</Text>
-          </View>
-        </View>
-        <View style={styles.changeButton}>
-          <Text style={styles.changeButtonText}>Change</Text>
-          <ChevronRight size={rs(16)} color="#FF6B00" />
-        </View>
-      </TouchableOpacity>
-
-      {/* Remove this after confirming things work */}
-      {/* <DebugBox text={`Location status: ${status}`} /> */}
-    </>
-  );
-};
-
-
-
 // Search bar component with trending searches
 const SearchBar = () => {
- const navigation = useNavigation();
+  const navigation = useNavigation();
   const [showTrending, setShowTrending] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [searchTimeout, setSearchTimeout] = useState(null);
 
   const fetchSearchResults = async (query) => {
     try {
@@ -299,14 +204,23 @@ const SearchBar = () => {
   };
 
   useEffect(() => {
-  const delay = setTimeout(() => {
-    if (searchText.length > 2) {
-      fetchSearchResults(searchText);
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-  }, 400);
-
-  return () => clearTimeout(delay);
-}, [searchText]);
+    
+    if (searchText.length > 2) {
+      const timeout = setTimeout(() => {
+        fetchSearchResults(searchText);
+      }, 500);
+      setSearchTimeout(timeout);
+    }
+    
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchText]);
 
   return (
     <View style={styles.searchBarContainer}>
@@ -319,13 +233,7 @@ const SearchBar = () => {
           placeholder="Search medicines, health products..."
           placeholderTextColor="#777"
           value={searchText}
-         onChangeText={(text) => {
-  setSearchText(text);
-  if (text.length > 2) {
-    fetchSearchResults(text);
-  }
-}}
-
+          onChangeText={(text) => setSearchText(text)}
           onFocus={() => setShowTrending(true)}
           onBlur={() => setTimeout(() => setShowTrending(false), 200)}
         />
@@ -359,13 +267,11 @@ const SearchBar = () => {
           </View>
         </View>
       )}
-
     </View>
   );
 };
 
 // Main banner with carousel
-
 const MainBanner = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const [banners, setBanners] = useState([]);
@@ -403,7 +309,6 @@ const MainBanner = () => {
     fetchData();
   }, []);
 
-  // Auto-scroll setup
   useEffect(() => {
     if (banners.length === 0) return;
 
@@ -440,7 +345,7 @@ const MainBanner = () => {
         {banners?.map((banner, index) => (
           <ImageBackground
             key={index}
-           source={{ uri: `${API_URL}/${banner.slider_image[0]}` }}  // Adjust if using a different image path
+            source={{ uri: `${API_URL}/${banner.slider_image[0]}` }}
             style={[styles.mainBanner, { width: width - 30 }]}
             imageStyle={{ borderRadius: 16 }}
             resizeMode="contain"
@@ -452,10 +357,6 @@ const MainBanner = () => {
               <View style={styles.bannerContent}>
                 <Text style={styles.bannerTitle}>{banner.title}</Text>
                 <Text style={styles.bannerSubtitle}>{banner.subtitle}</Text>
-                {/* <TouchableOpacity style={styles.bannerButton}>
-                  <Text style={styles.bannerButtonText}>Shop Now</Text>
-                  <ArrowRight size={rs(16)} color="#fff" />
-                </TouchableOpacity> */}
               </View>
             </LinearGradient>
           </ImageBackground>
@@ -489,29 +390,26 @@ const MainBanner = () => {
   );
 };
 
-// export default MainBanner;
-
 // Quick actions grid
-
 const QuickActions = () => {
   const navigation = useNavigation();
 
- const actions = [
-  { icon: 'Pill', title: 'Order Medicine', color: '#E3F2FD', route: 'ProductsPage' },
-  { icon: 'FileText', title: 'No Prescription', color: '#FFF3E0', route: 'ProductsPage' },
-  { icon: 'Clock', title: 'Previously Bought', color: '#E8F5E9', route: 'Orders' },
-  { icon: 'Award', title: 'Deals For You', color: '#F3E5F5' },
-];
+  const actions = [
+    { icon: 'Pill', title: 'Order Medicine', color: '#E3F2FD', route: 'ProductsPage' },
+    { icon: 'FileText', title: 'No Prescription', color: '#FFF3E0', route: 'ProductsPage' },
+    { icon: 'Clock', title: 'Previously Bought', color: '#E8F5E9', route: 'Orders' },
+    { icon: 'Award', title: 'Deals For You', color: '#F3E5F5' },
+  ];
 
   const itemsPerRow = width < 600 ? 2 : width < 900 ? 3 : 4;
 
-const handlePress = (action) => {
-  if (action.route) {
-    navigation.navigate(action.route);
-  } else {
-    console.warn('No route defined for this action:', action.title);
-  }
-};
+  const handlePress = (action) => {
+    if (action.route) {
+      navigation.navigate(action.route);
+    } else {
+      console.warn('No route defined for this action:', action.title);
+    }
+  };
 
   return (
     <View style={styles.quickActionsContainer}>
@@ -548,7 +446,6 @@ const handlePress = (action) => {
   );
 };
 
-
 // Categories horizontal scroll with images
 const Categories = () => {
   const [categoriesData, setCategoriesData] = useState([]);
@@ -562,7 +459,7 @@ const Categories = () => {
     try {
       const response = await axiosInstance.get('/user/allcategories');
       const allCategories = response?.data || [];
-      const humanCategories = allCategories.filter(cat => cat.variety === 'Human' || !cat.variety); // includes null as Human by default
+      const humanCategories = allCategories.filter(cat => cat.variety === 'Human' || !cat.variety);
       setCategoriesData(humanCategories);
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -652,9 +549,6 @@ const VeterinaryCategories = () => {
   );
 };
 
-
-
-
 // Offers section with gradient cards
 const OffersSection = () => {
   const [offers, setOffers] = useState([]);
@@ -665,7 +559,6 @@ const OffersSection = () => {
         const response = await axiosInstance.get("/user/allBanners");
         const bannerData = response.data;
 
-        // console.log("Fetched bannersejferkfrkjfnkrjnfkjer:", bannerData);
         const offerBanners = bannerData.filter(
           (banner) =>
             banner.type === "carousel1" &&
@@ -673,7 +566,6 @@ const OffersSection = () => {
             banner.slider_image.length > 0
         );
 
-        // Directly store the original banners with slider_image as-is
         setOffers(offerBanners);
       } catch (error) {
         console.error("Error fetching banners:", error?.response || error);
@@ -713,12 +605,11 @@ const OffersSection = () => {
   );
 };
 
-// export default OffersSection;
-
-// Enhanced product card component
+// Enhanced product card component - FIXED VERSION
 const ProductCard = ({ product, style }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [quantity, setQuantity] = useState(0);
+  const [imageError, setImageError] = useState(false);
   
   const scaleAnim = useRef(new Animated.Value(1)).current;
   
@@ -783,11 +674,18 @@ const ProductCard = ({ product, style }) => {
         onPressOut={handlePressOut}
         style={styles.productImageContainer}
       >
-        <Image
-          source={{ uri: product.image }}
-          style={styles.productImage}
-          resizeMode="contain"
-        />
+        {imageError ? (
+          <View style={[styles.productImage, styles.placeholderContainer]}>
+            <Pill size={rs(30)} color="#ccc" />
+          </View>
+        ) : (
+          <Image
+            source={{ uri: product.image }}
+            style={styles.productImage}
+            resizeMode="contain"
+            onError={() => setImageError(true)}
+          />
+        )}
       </Pressable>
       
       <View style={styles.ratingContainer}>
@@ -833,65 +731,6 @@ const ProductCard = ({ product, style }) => {
     </Animated.View>
   );
 };
-
-// New arrivals section
-const NewArrivals = ({ products }) => {
-  return (
-    <View style={styles.sectionContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>New Arrivals</Text>
-        <TouchableOpacity style={styles.viewAllButton}>
-          <Text style={styles.viewAllText}>View All</Text>
-          <ChevronRight size={rs(14)} color="#FF6B00" />
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={products}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <ProductCard 
-            product={item} 
-            style={styles.horizontalProductCard} 
-          />
-        )}
-        contentContainerStyle={{ paddingHorizontal: 15, gap: rs(12) }}
-      />
-    </View>
-  );
-};
-
-
-// Spotlight section
-// const Spotlight = () => {
-//   return (
-//     <View style={styles.sectionContainer}>
-//       <View style={styles.sectionHeader}>
-//         <Text style={styles.sectionTitle}>In the Spotlight</Text>
-//         <TouchableOpacity style={styles.viewAllButton}>
-//           <Text style={styles.viewAllText}>View All</Text>
-//           <ChevronRight size={rs(14)} color="#FF6B00" />
-//         </TouchableOpacity>
-//       </View>
-      
-//       <FlatList
-//         data={spotlightProducts}
-//         horizontal
-//         showsHorizontalScrollIndicator={false}
-//         keyExtractor={(item) => item.id.toString()}
-//         renderItem={({ item }) => (
-//           <ProductCard 
-//             product={item} 
-//             style={[styles.horizontalProductCard, styles.spotlightCard]} 
-//           />
-//         )}
-//         contentContainerStyle={{ paddingHorizontal: 15, gap: rs(12) }}
-//       />
-//     </View>
-//   );
-// };
 
 // Health articles section with enhanced cards
 const HealthArticles = () => {
@@ -944,10 +783,10 @@ const HealthArticles = () => {
                 </View>
               </View>
               
-              <TouchableOpacity style={styles.readMoreButton}>
+              {/* <TouchableOpacity style={styles.readMoreButton}>
                 <Text style={styles.readMoreText}>Read More</Text>
                 <ArrowRight size={rs(14)} color="#FF6B00" />
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
           </TouchableOpacity>
         )}
@@ -957,154 +796,145 @@ const HealthArticles = () => {
   );
 };
 
-// Health concerns section with enhanced UI
-const HealthConcerns = () => {
-  const concerns = [
-    { id: 1, name: 'Diabetes Care', icon: 'Droplet', color: '#E3F2FD' },
-    { id: 2, name: 'Heart Health', icon: 'Heart', color: '#FFF3E0' },
-    { id: 3, name: 'Immunity', icon: 'Zap', color: '#E8F5E9' },
-    { id: 4, name: 'Respiratory', icon: 'Thermometer', color: '#F3E5F5' },
-    { id: 5, name: 'Pain Relief', icon: 'Pill', color: '#E0F7FA' },
-    { id: 6, name: 'Bone Health', icon: 'Bone', color: '#E3F2FD' },
-    
-  ];
-  
-  // Determine number of items per row based on screen width
-  const itemsPerRow = width < 600 ? 3 : width < 900 ? 4 : 5;
-  
-  return (
-    <View style={styles.healthConcernsContainer}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Health Concerns</Text>
-        {/* <TouchableOpacity style={styles.viewAllButton}>
-          <Text style={styles.viewAllText}>View All</Text>
-          <ChevronRight size={rs(14)} color="#FF6B00" />
-        </TouchableOpacity> */}
-      </View>
-      
-      <View style={[
-        styles.healthConcernsGrid, 
-        { gap: rs(12) }
-      ]}>
-        {concerns.map((concern) => (
-          <TouchableOpacity 
-            key={concern.id} 
-            style={[
-              styles.healthConcernItem,
-              { width: (width - 30 - (itemsPerRow - 1) * rs(12)) / itemsPerRow }
-            ]}
-          >
-            <View 
-              style={[
-                styles.healthConcernIconContainer, 
-                { backgroundColor: concern.color }
-              ]}
-            >
-              {concern.icon === 'Droplet' && <Droplet size={rs(24)} color="#FF6B00" />}
-              {concern.icon === 'Heart' && <Heart size={rs(24)} color="#FF6B00" />}
-              {concern.icon === 'Zap' && <Zap size={rs(24)} color="#FF6B00" />}
-              {concern.icon === 'Thermometer' && <Thermometer size={rs(24)} color="#FF6B00" />}
-              {concern.icon === 'Pill' && <Pill size={rs(24)} color="#FF6B00" />}
-              {concern.icon === 'Bone' && <Bone size={rs(24)} color="#FF6B00" />}
-
-            </View>
-            <Text style={styles.healthConcernText}>{concern.name}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-};
-
-// // Bottom navigation bar
-// const BottomNavigation = () => {
-//   return (
-//     <View style={styles.bottomNavigation}>
-//       <TouchableOpacity style={styles.navItem}>
-//         <HomeIcon size={rs(22)} color="#FF6B00" />
-//         <Text style={[styles.navText, { color: '#FF6B00' }]}>Home</Text>
-//       </TouchableOpacity>
-      
-//       <TouchableOpacity style={styles.navItem}>
-//         <Package size={rs(22)} color="#777" />
-//         <Text style={styles.navText}>Orders</Text>
-//       </TouchableOpacity>
-      
-//       <TouchableOpacity style={styles.navItem}>
-//         <ShoppingCart size={rs(22)} color="#777" />
-//         <Text style={styles.navText}>Cart</Text>
-//       </TouchableOpacity>
-      
-//       <TouchableOpacity style={styles.navItem}>
-//         <MessageCircle size={rs(22)} color="#777" />
-//         <Text style={styles.navText}>Consult</Text>
-//       </TouchableOpacity>
-      
-//       <TouchableOpacity style={styles.navItem}>
-//         <User size={rs(22)} color="#777" />
-//         <Text style={styles.navText}>Profile</Text>
-//       </TouchableOpacity>
-//     </View>
-//   );
-// };
-
 // Main Home component
 const Home = () => {
   const insets = useSafeAreaInsets();
+  const [location, setLocation] = useState('Detecting location…');
+  const [status, setStatus] = useState('init');
+  const [isLoading, setIsLoading] = useState({
+    banners: true,
+    categories: true,
+    products: true,
+  });
 
-  const [categoryName, setCategoryName] = useState([]);
-  const [newArrivalProducts, setNewArrivalProducts] = useState([]);
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'ios') {
+      const auth = await Geolocation.requestAuthorization('whenInUse');
+      return auth === 'granted';
+    } else {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        {
+          title: 'Location Permission',
+          message: 'This app needs access to your location for delivery services.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+  };
 
+  const getCurrentLocation = () => {
+    Geolocation.getCurrentPosition(
+      pos => {
+        const { latitude, longitude } = pos.coords;
+        setStatus(`coords: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        fetchAddressFromCoords(latitude, longitude);
+      },
+      err => {
+        setStatus(`loc error code=${err?.code} msg=${err?.message}`);
+        setLocation(err?.code === 2 ? 'Turn on device location' : 'Unable to get location');
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+        forceRequestLocation: true,
+        showLocationDialog: true,
+      }
+    );
+  };
 
-  // useEffect(() => {
-  //   fetchData();
-  // }, [])
-
-  const fetchData = async () => {
+  const fetchAddressFromCoords = async (lat, lon) => {
     try {
-      const response = await axiosInstance.get('/user/allcategories');
-      console.log("Fetched categories:", response);
-      setCategoryName(response?.data);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+        { headers: { 'User-Agent': 'your.app.id/1.0 (RN)' } }
+      );
+      const data = await res.json();
+      setLocation(data.display_name || `${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    } catch (e) {
+      setStatus(`reverse error: ${String(e)}`);
+      setLocation(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+    }
+  };
+
+  const handleLocationPress = async () => {
+    try {
+      const hasPermission = await requestLocationPermission();
+      if (hasPermission) {
+        getCurrentLocation();
+      } else {
+        Alert.alert(
+          'Permission Required',
+          'Location permission is required for delivery services.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+      }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Location error:', error);
     }
   };
 
   useEffect(() => {
-    fetchData();
-    fetchData2();
+    (async () => {
+      if (Platform.OS === 'android') {
+        await requestAndroidLocation();
+      } else {
+        const auth = await Geolocation.requestAuthorization('whenInUse');
+        setStatus(`iOS auth: ${auth}`);
+        if (auth === 'granted') getCurrentLocation();
+        else setLocation('Permission denied');
+      }
+    })();
   }, []);
 
- const fetchData2 = async () => {
-  try {
-    const response = await axiosInstance.get('/user/allnewarrivalproducts');
-    const fetchedProducts = response.data.map(p => ({
-      ...p,
-      id: p._id,
-      name: p.name,
-      quantity: p.packaging,
-      currentPrice: parseFloat(p.consumer_price),
-      originalPrice: parseFloat(p.retail_price),
-      discount: `${Math.round(((p.retail_price - p.consumer_price) / p.retail_price) * 100)}% Off`,
-      image: p.image,
-      rating: parseFloat(p.rating) || 4.5,
-      reviews: p.reviews || 100,
-      description: p.description || 'No description',
-      badge: p.badge || 'New',
-    }));
-    
-    setNewArrivalProducts(fetchedProducts);
-  } catch (error) {
-    console.error("Error fetching new arrival products:", error);
-  }
-};
+  const requestAndroidLocation = async () => {
+    try {
+      const fineHas = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
+      const coarseHas = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION);
 
-  
+      if (!fineHas && !coarseHas) {
+        const result = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          PermissionsAndroid.PERMISSIONS.ACCESS_COARSE_LOCATION,
+        ]);
+
+        const fine = result['android.permission.ACCESS_FINE_LOCATION'];
+        const coarse = result['android.permission.ACCESS_COARSE_LOCATION'];
+        setStatus(`fine=${fine}, coarse=${coarse}`);
+
+        const NEVER = PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN;
+        const GRANTED = PermissionsAndroid.RESULTS.GRANTED;
+
+        if (fine === NEVER || coarse === NEVER) {
+          setLocation('Permission permanently denied');
+          return;
+        }
+        if (fine !== GRANTED && coarse !== GRANTED) {
+          setLocation('Permission denied');
+          return;
+        }
+      } else {
+        setStatus(`already granted fine=${fineHas}, coarse=${coarseHas}`);
+      }
+
+      getCurrentLocation();
+    } catch (e) {
+      setStatus(`perm error: ${String(e)}`);
+      setLocation('Permission error');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#fff" barStyle="dark-content" />
-      <Header />
-      <LocationBar />
+      <Header location={location} onLocationPress={handleLocationPress} />
       <SearchBar />
       
       <ScrollView 
@@ -1116,15 +946,9 @@ const Home = () => {
         <QuickActions />
         <Categories />
         <OffersSection />
-         <VeterinaryCategories />
-        {/* <NewArrivals products={newArrivalProducts} /> */}
-
-        {/* <Spotlight /> */}
-        {/* <HealthConcerns /> */}
+        <VeterinaryCategories />
         <HealthArticles />
       </ScrollView>
-      
-      {/* <BottomNavigation /> */}
     </SafeAreaView>
   );
 };
@@ -1137,35 +961,70 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: '#fff',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    marginTop: 40,
-    zIndex: 10,
+    paddingTop: 20,
+    paddingHorizontal: rs(15),
+    paddingVertical: rs(8),
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  headerInner: {
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: rs(15),
-    paddingVertical: rs(6),
   },
-  logoContainer: {
-    // flex: 1,
+  logoLocationRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   logo: {
     width: rs(50),
     height: rs(50),
   },
-  logoText: {
-    fontSize: rs(22),
-    fontWeight: '700',
-    color: '#FF6B00',
+  verticalDivider: {
+    width: 1,
+    height: rs(30),
+    backgroundColor: '#e0e0e0',
+    marginHorizontal: rs(12),
   },
-  headerButtons: {
+  locationCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingVertical: rs(6),
+  },
+  locationInfoCompact: {
+    flex: 1,
+  },
+  deliverToCompact: {
+    fontSize: rs(10),
+    color: '#777',
+    marginBottom: 2,
+    fontWeight: '500',
+  },
+  locationRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: rs(4),
+  },
+  locationTextCompact: {
+    fontSize: rs(13),
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+  headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: rs(12),
@@ -1173,12 +1032,6 @@ const styles = StyleSheet.create({
   iconButton: {
     position: 'relative',
     padding: rs(8),
-  },
-  offerImageOnly: {
-    width: rs(250),
-    height: rs(120),
-    resizeMode: 'cover',
-    borderRadius: rs(10),
   },
   notificationBadge: {
     position: 'absolute',
@@ -1210,59 +1063,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: rs(10),
     fontWeight: 'bold',
-  },
-  menuDropdown: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-    paddingVertical: rs(10),
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: rs(12),
-    paddingHorizontal: rs(20),
-    gap: rs(12),
-  },
-  menuItemText: {
-    fontSize: rs(16),
-    fontWeight: '500',
-    color: '#333',
-  },
-  locationBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: rs(15),
-    paddingVertical: rs(10),
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  locationLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: rs(8),
-  },
-  deliverToText: {
-    fontWeight: '400',
-    color: '#777',
-    fontSize: rs(12),
-  },
-  locationText: {
-    fontWeight: '500',
-    color: '#333',
-    fontSize: rs(12),
-  },
-  changeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: rs(4),
-  },
-  changeButtonText: {
-    fontWeight: '500',
-    color: '#FF6B00',
-    fontSize: rs(14),
   },
   searchBarContainer: {
     backgroundColor: '#FF6B00',
@@ -1374,21 +1174,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
-  },
-  bannerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF6B00',
-    paddingHorizontal: rs(16),
-    paddingVertical: rs(8),
-    borderRadius: rs(20),
-    alignSelf: 'flex-start',
-    gap: rs(6),
-  },
-  bannerButtonText: {
-    fontSize: rs(14),
-    fontWeight: '600',
-    color: '#fff',
   },
   paginationContainer: {
     flexDirection: 'row',
@@ -1506,72 +1291,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: rs(10),
   },
-  offerCard: {
-    width: width * 0.7,
+  offerImageOnly: {
+    width: rs(250),
     height: rs(120),
-    borderRadius: rs(12),
-    overflow: 'hidden',
-  },
-  offerGradient: {
-    flex: 1,
-    padding: rs(15),
-  },
-  offerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  offerTextContent: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
-  offerTitle: {
-    fontWeight: '700',
-    fontSize: rs(18),
-    color: '#fff',
-    marginBottom: rs(4),
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  offerDescription: {
-    fontWeight: '400',
-    fontSize: rs(14),
-    color: '#fff',
-    marginBottom: rs(8),
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  offerCodeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: rs(10),
-    paddingVertical: rs(5),
-    borderRadius: rs(5),
-    alignSelf: 'flex-start',
-    marginBottom: rs(5),
-  },
-  offerCode: {
-    fontWeight: '700',
-    fontSize: rs(14),
-    color: '#FF6B00',
-  },
-  offerValidity: {
-    fontWeight: '400',
-    fontSize: rs(12),
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  offerImage: {
-    width: rs(80),
-    height: rs(80),
-    resizeMode: 'contain',
-  },
-  horizontalProductCard: {
-    width: width * 0.42,
-    borderRadius: rs(12),
+    resizeMode: 'cover',
+    borderRadius: rs(10),
   },
   productCard: {
     backgroundColor: '#fff',
@@ -1610,6 +1334,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: rs(120),
     marginBottom: rs(10),
+  },
+  placeholderContainer: {
+    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: rs(8),
   },
   badgeContainer: {
     position: 'absolute',
@@ -1712,10 +1444,6 @@ const styles = StyleSheet.create({
     fontSize: rs(14),
     color: '#333',
   },
-  spotlightCard: {
-    borderColor: '#FFD700',
-    borderWidth: 1.5,
-  },
   articleCard: {
     width: width * 0.65,
     backgroundColor: '#fff',
@@ -1743,7 +1471,7 @@ const styles = StyleSheet.create({
     padding: rs(10),
   },
   articleContent: {
-    padding: rs(12),
+    padding: rs(15),
   },
   articleCategoryContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -1768,7 +1496,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: rs(10),
+    marginBottom: rs(15)
   },
   authorContainer: {
     flexDirection: 'row',
@@ -1807,70 +1535,6 @@ const styles = StyleSheet.create({
     fontSize: rs(14),
     color: '#FF6B00',
   },
-  healthConcernsContainer: {
-    padding: rs(15),
-    backgroundColor: '#fff',
-    marginBottom: rs(10),
-  },
-  healthConcernsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  healthConcernItem: {
-    alignItems: 'center',
-    marginBottom: rs(15),
-  },
-  healthConcernIconContainer: {
-    width: rs(50),
-    height: rs(50),
-    borderRadius: rs(25),
-    backgroundColor: '#f0f4f8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: rs(8),
-  },
-  healthConcernText: {
-    fontWeight: '500',
-    fontSize: rs(12),
-    color: '#333',
-    textAlign: 'center',
-  },
-  bottomNavigation: {
-    // position: 'absolute',
-    // bottom: 0,
-    // left: 0,
-    // right: 0,
-    // flexDirection: 'row',
-    // backgroundColor: '#fff',
-    // paddingVertical: rs(10),
-    // borderTopWidth: 1,
-    // borderTopColor: '#f0f0f0',
-    // ...Platform.select({
-    //   ios: {
-    //     shadowColor: '#000',
-    //     shadowOffset: { width: 0, height: -2 },
-    //     shadowOpacity: 0.1,
-    //     shadowRadius: 3,
-    //   },
-    //   android: {
-    //     elevation: 8,
-    //   },
-    // }),
-  },
-  navItem: {
-    // flex: 1,
-    // alignItems: 'center',
-    // justifyContent: 'center',
-  },
-  navText: {
-    // fontSize: rs(12),
-    // fontWeight: '500',
-    // color: '#777',
-    // marginTop: rs(4),
-  },
 });
 
 export default Home;
-
-// console.log("Enhanced React Native Pharmacy App UI code is ready to use!");

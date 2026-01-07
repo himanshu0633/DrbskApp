@@ -8,7 +8,6 @@ import LoginScreen from '../Screen/login';
 import OrdersScreen from '../Screen/Orders';
 import OrderConfirmation from '../Screen/Orders/OrderConfirmation';
 const Stack = createNativeStackNavigator();
-
 const RootNavigation = () => {
   return (
     <NavigationContainer>
@@ -24,15 +23,11 @@ const RootNavigation = () => {
           component={OrderConfirmation} 
           options={{ 
             headerShown: false,
-            presentation: 'modal', // Optional: makes it slide up like a modal
+            presentation: 'modal', 
           }} 
         />
-
-
-         
       </Stack.Navigator>
     </NavigationContainer>
   );
 };
-
 export default RootNavigation;
