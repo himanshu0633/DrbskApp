@@ -1001,7 +1001,7 @@
                     }
                 },
                 {
-                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/res/values-sw600dp-v13/values-sw600dp-v13.xml",
+                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/res/values-sw600dp-v13/values-sw600dp-v13.xml",
                     "from": {
                         "startLines": "2,3",
                         "startColumns": "4,4",
@@ -4101,25 +4101,6 @@
                     }
                 },
                 {
-                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/res/values/values.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,94",
-                        "endLines": "2,19",
-                        "endColumns": "38,12",
-                        "endOffsets": "89,673"
-                    },
-                    "to": {
-                        "startLines": "478,4796",
-                        "startColumns": "4,4",
-                        "startOffsets": "23924,326469",
-                        "endLines": "478,4812",
-                        "endColumns": "38,12",
-                        "endOffsets": "23958,327048"
-                    }
-                },
-                {
                     "source": "/Users/himanshu/.gradle/caches/8.12/transforms/d7282457b25040bbbd6bdf6de88de65b/transformed/appcompat-resources-1.6.1/res/values/values.xml",
                     "from": {
                         "startLines": "2,18,24,34,50",
@@ -4299,6 +4280,25 @@
                         "startOffsets": "96752",
                         "endColumns": "82",
                         "endOffsets": "96830"
+                    }
+                },
+                {
+                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/res/values/values.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,94",
+                        "endLines": "2,19",
+                        "endColumns": "38,12",
+                        "endOffsets": "89,673"
+                    },
+                    "to": {
+                        "startLines": "478,4796",
+                        "startColumns": "4,4",
+                        "startOffsets": "23924,326469",
+                        "endLines": "478,4812",
+                        "endColumns": "38,12",
+                        "endOffsets": "23958,327048"
                     }
                 },
                 {

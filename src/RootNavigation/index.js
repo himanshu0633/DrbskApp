@@ -7,6 +7,7 @@ import ProductsPage from '../Screen/Products';
 import LoginScreen from '../Screen/login';
 import OrdersScreen from '../Screen/Orders';
 import OrderConfirmation from '../Screen/Orders/OrderConfirmation';
+import Cart from '../Screen/Cart';
 const Stack = createNativeStackNavigator();
 const RootNavigation = () => {
   return (
@@ -15,6 +16,7 @@ const RootNavigation = () => {
         <Stack.Screen name="Splash" component={SplashScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Dashboard" component={BottomTabNavigator} options={{ headerShown: false }} />
         {/* <Stack.Screen name="ProductsPage" component={Produc} options={{ headerShown: false }} /> */}
+        <Stack.Screen name="Cart" component={Cart} />
          <Stack.Screen name="ProductsPage" component={ProductsPage} options={{ headerShown: false }} />
          <Stack.Screen name="login" component={LoginScreen} options={{ headerShown: false }} />
          <Stack.Screen name="Orders" component={OrdersScreen} options={{ headerShown: false }} />

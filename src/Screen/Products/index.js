@@ -15,11 +15,13 @@ import {
   Modal,
   RefreshControl,
   Platform,
+  FlatList,
 } from 'react-native';
 import {
   ArrowLeft,
   Search,
   ChevronDown,
+  ChevronRight,
   ShoppingBag,
   Clock,
   Shield,
@@ -40,13 +42,15 @@ import axiosInstance from '../../Components/AxiosInstance';
 import API_URL from '../../../config';
 import { useDispatch, useSelector } from 'react-redux';
 import { addData } from '../../store/Action';
-import { useToast } from '../../ToastProvider'; 
+import Toast from 'react-native-toast-message';
+import { useNavigation } from '@react-navigation/native'; // ✅ IMPORT ADDED HERE
+
 const { width, height } = Dimensions.get('window');
 
 /* --------------------------- helpers / normalizers -------------------------- */
 
 function toNum(x, fallback = 0) {
-  if (x === null || x === undefined) return fallback;
+  if (x === null || x === undefined || x === '') return fallback;
   const n = parseFloat(String(x).toString().replace(/[^0-9.\-]/g, ''));
   return Number.isFinite(n) ? n : fallback;
 }
@@ -81,52 +85,412 @@ function parseVariants(raw) {
   }
 }
 
+/** Extract product level prices from variants */
+function getProductPrices(variants) {
+  if (!variants || variants.length === 0) {
+    return {
+      retail_price: 0,
+      consumer_price: 0,
+      discount: 0,
+      gst: 0,
+      mrp: 0
+    };
+  }
+  
+  const firstVariant = variants[0];
+  return {
+    retail_price: toNum(firstVariant.retail_price),
+    consumer_price: toNum(firstVariant.final_price),
+    discount: toNum(firstVariant.discount),
+    gst: toNum(firstVariant.gst),
+    mrp: toNum(firstVariant.mrp)
+  };
+}
+
+/** Calculate discount percentage from variant data */
+function calculateDiscountPercent(variant) {
+  if (!variant) return 0;
+  
+  const mrp = toNum(variant.mrp);
+  const finalPrice = toNum(variant.final_price);
+  
+  if (variant.discount > 0) {
+    return Math.round(toNum(variant.discount));
+  }
+  
+  if (mrp > 0 && finalPrice > 0 && mrp > finalPrice) {
+    return Math.round(((mrp - finalPrice) / mrp) * 100);
+  }
+  
+  return 0;
+}
+
+/** Get the display price for a product based on a selected variant label */
+function getDisplayPrice(product, selectedLabel) {
+  if (!product?.variants?.length) return toNum(product?.consumer_price || product?.retail_price || 0);
+  
+  const v = product.variants.find(x => x.label === selectedLabel);
+  if (!v) return toNum(product?.consumer_price || product?.retail_price || 0);
+  
+  return toNum(v.final_price || v.retail_price || 0);
+}
+
+/** Get variant details for selected variant */
+function getVariantDetails(product, selectedLabel) {
+  if (!product?.variants?.length || !selectedLabel) return null;
+  return product.variants.find(x => x.label === selectedLabel);
+}
+
+/** Get the original price (MRP) for display */
+function getOriginalPrice(product, selectedLabel) {
+  if (!product?.variants?.length) return toNum(product?.mrp || 0);
+  
+  const v = product.variants.find(x => x.label === selectedLabel);
+  if (!v) return toNum(product?.mrp || 0);
+  
+  return toNum(v.mrp || 0);
+}
+
 /** Build a normalized product with price/originalPrice/discountPercent & variants */
 function normalizeProduct(p) {
   const variants = parseVariants(p.quantity);
-
-  const consumerTop = toNum(p.consumer_price, NaN);
+  
+  const productPrices = getProductPrices(variants);
+  
   let price = 0;
   let originalPrice = 0;
-
-  if (Number.isFinite(consumerTop) && consumerTop > 0) {
-    price = consumerTop;
-    originalPrice = toNum(p.retail_price, price);
-  } else if (variants.length > 0) {
+  let discountPercent = 0;
+  
+  if (variants.length > 0) {
     const minVar = variants.reduce((acc, v) => {
-      const vPrice = v.final_price || v.retail_price || v.mrp || Infinity;
-      const aPrice = acc.final_price || acc.retail_price || acc.mrp || Infinity;
+      const vPrice = v.final_price || v.retail_price || 0;
+      const aPrice = acc.final_price || acc.retail_price || 0;
       return vPrice < aPrice ? v : acc;
     }, variants[0]);
 
-    price = toNum(minVar.final_price || minVar.retail_price || minVar.mrp, 0);
-    originalPrice = toNum(minVar.retail_price || minVar.mrp || price, price);
-  } else {
-    price = 0;
-    originalPrice = 0;
+    price = toNum(minVar.final_price || minVar.retail_price);
+    originalPrice = toNum(minVar.mrp);
+    discountPercent = calculateDiscountPercent(minVar);
   }
-
-  const discountPercent =
-    originalPrice > 0 ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
-
+  
   return {
     ...p,
     price,
     originalPrice,
     discountPercent,
     variants,
+    retail_price: productPrices.retail_price,
+    consumer_price: productPrices.consumer_price,
+    discount_value: productPrices.discount,
+    gst: productPrices.gst,
+    mrp: productPrices.mrp
   };
 }
 
-/** Get the display price for a product based on a selected variant label */
-function getDisplayPrice(product, selectedLabel) {
-  if (!product?.variants?.length) return toNum(product?.price, 0);
-  const v = product.variants.find(x => x.label === selectedLabel);
-  if (!v) return toNum(product?.price, 0);
-  return toNum(v.final_price || v.retail_price || v.mrp, 0);
-}
+const rs = (size, factor = 0.5) => {
+  return size + ((width / 400) - 1) * size * factor;
+};
 
-/* -------------------------------- component -------------------------------- */
+// Trending searches data (same as Home page)
+const trendingSearches = [
+  'Vitamin C', 'Blood Pressure Monitor', 'Diabetes Test Strips', 
+  'Immunity Boosters', 'Face Masks', 'Protein Powder', 
+  'Multivitamins', 'Hand Sanitizer', 'Thermometer'
+];
+
+/* ---------------------------- Search Bar Component --------------------------- */
+
+const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
+  const navigation = useNavigation(); // ✅ Now properly imported
+  const [searchText, setSearchText] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchTimeout, setSearchTimeout] = useState(null);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+
+  const fetchSearchResults = async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setLoadingSearch(true);
+    try {
+      const apiUrl = `/user/search?query=${encodeURIComponent(query)}`;
+      const response = await axiosInstance.get(apiUrl);
+      
+      let results = [];
+      if (Array.isArray(response.data)) {
+        results = response.data;
+      } else if (response.data?.results) {
+        results = response.data.results;
+      } else if (response.data?.data) {
+        results = response.data.data;
+      } else if (typeof response.data === 'object') {
+        const keys = Object.keys(response.data);
+        if (keys.length > 0 && Array.isArray(response.data[keys[0]])) {
+          results = response.data[keys[0]];
+        } else if (response.data._id) {
+          results = [response.data];
+        }
+      }
+      
+      const normalizedResults = (results || []).map(normalizeProduct);
+      setSearchResults(normalizedResults);
+      
+    } catch (error) {
+      console.error('Search API error:', error);
+      setSearchResults([]);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const handleProductPress = (product) => {
+    console.log('Product pressed:', product.name);
+    if (onSearchResultPress) {
+      onSearchResultPress(product);
+    } else {
+      navigation.navigate('ProductsPage', { selectedProduct: product });
+    }
+    setShowTrending(false);
+    setSearchText('');
+    setSearchResults([]);
+  };
+
+  const handleClearSearch = () => {
+    setSearchText('');
+    setSearchResults([]);
+    setShowTrending(false);
+  };
+
+  useEffect(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+    
+    if (searchText.length > 1) {
+      setShowTrending(true);
+      const timeout = setTimeout(() => {
+        fetchSearchResults(searchText);
+      }, 500);
+      setSearchTimeout(timeout);
+    } else {
+      setSearchResults([]);
+    }
+    
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [searchText]);
+
+  const renderSearchResultItem = ({ item }) => {
+    const normalizedProduct = normalizeProduct(item);
+    const price = toNum(normalizedProduct.price, 0);
+    const originalPrice = toNum(normalizedProduct.originalPrice, 0);
+    const discountPercent = normalizedProduct.discountPercent || 0;
+    const hasVariants = normalizedProduct.variants?.length > 0;
+    
+    return (
+      <TouchableOpacity
+        style={styles.searchResultItem}
+        onPress={() => handleProductPress(item)}
+        activeOpacity={0.7}
+      >
+        <Image
+          source={{ 
+            uri: item?.media?.[0]?.url 
+              ? `${API_URL}${item.media[0].url}`
+              : `https://via.placeholder.com/80x80?text=${item.name?.charAt(0) || 'P'}`
+          }}
+          style={styles.searchResultImage}
+          resizeMode="cover"
+        />
+        
+        <View style={styles.searchResultInfo}>
+          <Text style={styles.searchResultCategory} numberOfLines={1}>
+            {item.category || 'Category'}
+          </Text>
+          <Text style={styles.searchResultName} numberOfLines={2}>
+            {item.name}
+          </Text>
+          
+          {hasVariants && normalizedProduct.variants?.length > 0 && (
+            <View style={styles.variantIndicator}>
+              <Text style={styles.variantText}>
+                {normalizedProduct.variants[0].label}
+                {normalizedProduct.variants.length > 1 ? ` +${normalizedProduct.variants.length - 1} more` : ''}
+              </Text>
+            </View>
+          )}
+          
+          <View style={styles.searchResultPriceRow}>
+            <Text style={styles.searchResultPrice}>
+              ₹{price.toFixed(2)}
+            </Text>
+            {originalPrice > 0 && originalPrice > price && discountPercent > 0 && (
+              <>
+                <Text style={styles.searchResultOriginalPrice}>
+                  ₹{originalPrice.toFixed(2)}
+                </Text>
+                <View style={styles.searchResultDiscountBadge}>
+                  <Text style={styles.searchResultDiscountText}>
+                    {discountPercent}% OFF
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.searchBarContainer}>
+      <View style={styles.searchBar}>
+        <View style={styles.searchIconContainer}>
+          <Search size={rs(20)} color="#fff" />
+        </View>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search medicines, health products..."
+          placeholderTextColor="#777"
+          value={searchText}
+          onChangeText={setSearchText}
+          onFocus={() => setShowTrending(true)}
+          onBlur={() => {
+            setTimeout(() => {
+              if (!searchText) {
+                setShowTrending(false);
+              }
+            }, 200);
+          }}
+          returnKeyType="search"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {searchText ? (
+          <TouchableOpacity 
+            style={styles.clearButton}
+            onPress={handleClearSearch}
+          >
+            <X size={rs(18)} color="#777" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={styles.micButton}
+            onPress={() => setShowTrending(true)}
+          >
+            <Filter size={rs(18)} color="#777" />
+          </TouchableOpacity>
+        )}
+      </View>
+      
+      {showTrending && (searchResults.length > 0 || loadingSearch || searchText.length > 0) && (
+        <View style={styles.searchResultsContainer}>
+          <View style={styles.searchResultsHeader}>
+            <Text style={styles.searchResultsTitle}>
+              {loadingSearch ? 'Searching...' : searchResults.length > 0 ? 'Search Results' : 'No Results'}
+            </Text>
+            {searchText.length > 0 && !loadingSearch && searchResults.length === 0 && (
+              <Text style={styles.searchResultsSubtitle}>
+                No products found for "{searchText}"
+              </Text>
+            )}
+          </View>
+          
+          {loadingSearch ? (
+            <View style={styles.searchLoadingContainer}>
+              <ActivityIndicator size="small" color="#FF6B00" />
+              <Text style={styles.searchLoadingText}>Searching products...</Text>
+            </View>
+          ) : searchResults.length > 0 ? (
+            <FlatList
+              data={searchResults}
+              keyExtractor={(item) => item._id || Math.random().toString()}
+              renderItem={renderSearchResultItem}
+              contentContainerStyle={styles.searchResultsList}
+              showsVerticalScrollIndicator={false}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+              initialNumToRender={5}
+            />
+          ) : searchText.length > 1 && !loadingSearch ? (
+            <View style={styles.noResultsContainer}>
+              <Package size={40} color="#ccc" />
+              <Text style={styles.noResultsText}>No products found</Text>
+              <Text style={styles.noResultsSubtext}>
+                Try different keywords or browse categories
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.trendingContainer}>
+              <Text style={styles.trendingTitle}>Trending Searches</Text>
+              <View style={styles.trendingTagsContainer}>
+                {trendingSearches.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.trendingTag}
+                    onPress={() => {
+                      setSearchText(item);
+                      setShowTrending(true);
+                    }}
+                  >
+                    <Text style={styles.trendingTagText}>{item}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+};
+
+/* --------------------------- Header Component -------------------------- */
+
+const Header = ({ navigation, cartCount }) => {
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerContent}>
+        {/* Left: Back Button */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ArrowLeft size={24} color="#333" />
+        </TouchableOpacity>
+        
+        {/* Center: Logo */}
+        <Image 
+          source={require('../../assets/Logo.png')} 
+          style={styles.logo} 
+        />
+        
+        {/* Right: Cart Button */}
+        <TouchableOpacity 
+          style={[styles.iconButton, styles.cartButton]}
+          onPress={() => navigation.navigate('Cart')}
+        >
+          <ShoppingBag size={rs(20)} color="#333" />
+          {cartCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.badgeText}>
+                {cartCount > 9 ? '9+' : cartCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+/* -------------------------------- Main Component -------------------------------- */
 
 export default function ProductsPage({ navigation, route }) {
   const [loading, setLoading] = useState(true);
@@ -142,8 +506,7 @@ export default function ProductsPage({ navigation, route }) {
   
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showProductDetails, setShowProductDetails] = useState(false);
-  const [searchActive, setSearchActive] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [showTrending, setShowTrending] = useState(false);
   const [sortOption, setSortOption] = useState('featured');
   const [mainImage, setMainImage] = useState(null);
   const [selectedQuantity, setSelectedQuantity] = useState(null);
@@ -157,32 +520,25 @@ export default function ProductsPage({ navigation, route }) {
   const cartCount = cartItems.length;
   const dispatch = useDispatch();
   
-  const { showToast } = useToast();
-
-  const scrollY = useRef(new Animated.Value(0)).current;
-  
-  // Get subcategory data from route params
   const subcategoryId = route.params?.subcategoryId;
   const subcategoryName = route.params?.subcategoryName;
 
   /* ------------------------------- Navigation Helper ------------------------------- */
   
-  // Safe navigation function to handle Cart navigation
   const navigateToCart = useCallback(() => {
     try {
-      // Try different navigation approaches
-      if (navigation.canGoBack()) {
-        // Try navigating to Cart screen directly
-        navigation.navigate('Cart');
-      } else {
-        // Try navigating to Dashboard first then Cart
-        navigation.navigate('Dashboard', { screen: 'Cart' });
-      }
+      navigation.navigate('Cart');
     } catch (error) {
-      console.error('Navigation error:', error);
-      showToast('Cannot navigate to cart right now', 'error');
+      console.warn('Navigation failed:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Cannot navigate to cart right now',
+        position: 'bottom',
+        visibilityTime: 3000,
+      });
     }
-  }, [navigation, showToast]);
+  }, [navigation]);
 
   /* ------------------------------- fetchers -------------------------------- */
 
@@ -193,160 +549,88 @@ export default function ProductsPage({ navigation, route }) {
       setCategories(['All', ...fetchedCategories]);
     } catch (error) {
       console.error('Error fetching categories:', error);
-      showToast('Failed to load categories', 'error');
     }
   };
 
-const fetchProducts = async (pageNum = 1, isRefresh = false) => {
-  if (isRefresh) {
-    setLoading(true);
-    setPage(1);
-  } else if (pageNum > 1) {
-    setLoadingMore(true);
-  }
-  
-  setError(null);
-  
-  try {
-    // If we have a subcategory name from route params, use the productsBySubcategory API
-    if (subcategoryName) {
-      console.log('Fetching products for subcategory:', subcategoryName);
-      
-      const encodedSubcategory = encodeURIComponent(subcategoryName);
-      
-      const response = await axiosInstance.get(
-        `/api/productsBySubcategory?subcategory=${encodedSubcategory}`
-      );
-      
-      console.log('Full API URL would be:', `${API_URL}/api/productsBySubcategory?subcategory=${encodedSubcategory}`);
-      console.log('API Response status:', response.status);
-      console.log('API Response data:', response?.data);
-      
-      let fetchedProducts = [];
-      
-      // Handle response based on actual API structure
-      if (Array.isArray(response?.data)) {
-        fetchedProducts = response.data;
-      } else if (response?.data && typeof response.data === 'object') {
-        // Try to extract products from nested structure
-        fetchedProducts = response.data.products || response.data.data || response.data.result || [];
-      }
-      
-      const normalized = (fetchedProducts || []).map(normalizeProduct);
-      console.log(`Found ${normalized.length} products for subcategory "${subcategoryName}"`);
-      
-      setAllProducts(normalized);
-      setProducts(normalized);
-      setHasMore(false);
-      
-      if (normalized.length === 0) {
-        showToast(`No products found in "${subcategoryName}" category`, 'info');
-      }
-    } else {
-      // Original API call for all products
-      const response = await axiosInstance.get(`/user/allproducts?page=${pageNum}&limit=20`);
-      const fetched = (response?.data || []).map(normalizeProduct);
-      
-      if (pageNum === 1) {
-        setAllProducts(fetched);
-        setProducts(fetched);
-      } else {
-        setAllProducts(prev => [...prev, ...fetched]);
-        setProducts(prev => [...prev, ...fetched]);
-      }
-      
-      setHasMore(fetched.length === 20);
+  const fetchProducts = async (pageNum = 1, isRefresh = false) => {
+    if (isRefresh) {
+      setLoading(true);
+      setPage(1);
+    } else if (pageNum > 1) {
+      setLoadingMore(true);
     }
-  } catch (error) {
-    console.error('Error fetching products:', error.message);
-    console.error('Error details:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      url: error.config?.url,
-      baseURL: error.config?.baseURL,
-    });
     
-    // More specific error handling
-    if (error.response?.status === 404) {
+    setError(null);
+    
+    try {
       if (subcategoryName) {
-        setError(`API endpoint not found for "${subcategoryName}". Please try again later.`);
-        showToast('Subcategory API endpoint not available', 'error');
+        const encodedSubcategory = encodeURIComponent(subcategoryName);
+        const response = await axiosInstance.get(
+          `/api/productsBySubcategory?subcategory=${encodedSubcategory}`
+        );
         
-        // Fallback: Try to get all products and filter client-side
-        try {
-          const fallbackResponse = await axiosInstance.get(`/user/allproducts?page=1&limit=100`);
-          const allProducts = (fallbackResponse?.data || []).map(normalizeProduct);
-          
-          // Show all products as fallback
-          setAllProducts(allProducts);
-          setProducts(allProducts);
-          setHasMore(false);
-          
-          showToast(`Showing all products (${allProducts.length} items)`, 'info');
-        } catch (fallbackError) {
-          setError('Failed to load any products. Please check your connection.');
+        let fetchedProducts = [];
+        if (Array.isArray(response?.data)) {
+          fetchedProducts = response.data;
+        } else if (response?.data && typeof response.data === 'object') {
+          fetchedProducts = response.data.products || response.data.data || response.data.result || [];
         }
+        
+        const normalized = (fetchedProducts || []).map(normalizeProduct);
+        setAllProducts(normalized);
+        setProducts(normalized);
+        setHasMore(false);
+        
       } else {
-        setError('Products API endpoint not found. Please contact support.');
+        const response = await axiosInstance.get(`/user/allproducts?page=${pageNum}&limit=20`);
+        const fetched = (response?.data || []).map(normalizeProduct);
+        
+        if (pageNum === 1) {
+          setAllProducts(fetched);
+          setProducts(fetched);
+        } else {
+          setAllProducts(prev => [...prev, ...fetched]);
+          setProducts(prev => [...prev, ...fetched]);
+        }
+        
+        setHasMore(fetched.length === 20);
       }
-    } else if (error.response?.status === 500) {
-      setError('Server error. Please try again later.');
-    } else if (error.message.includes('Network Error')) {
-      setError('Network error. Please check your internet connection.');
-    } else {
+    } catch (error) {
+      console.error('Error fetching products:', error.message);
       setError('Failed to load products. Please try again.');
     }
     
-    showToast('Failed to load products', 'error');
-  }
-  
-  setLoading(false);
-  setLoadingMore(false);
-};
+    setLoading(false);
+    setLoadingMore(false);
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([fetchCategories(), fetchProducts(1, true)]);
     setRefreshing(false);
-    showToast('Products refreshed', 'success');
   };
 
   useEffect(() => {
     fetchCategories();
     fetchProducts(1, true);
-  }, [subcategoryId]); // Re-fetch when subcategoryId changes
+  }, [subcategoryId]);
 
   /* ------------------------- category + search + sort ------------------------ */
 
   const filterByCategory = useCallback((category) => {
     setSelectedCategory(category);
     setPage(1);
-    showToast(`Showing ${category} products`, 'info');
-  }, [showToast]);
+  }, []);
 
   const applySorting = useCallback((option) => {
     setSortOption(option);
     setShowSortModal(false);
-    
-    // Show toast for sorting
-    const sortLabels = {
-      'featured': 'Featured',
-      'priceLowToHigh': 'Price: Low to High',
-      'priceHighToLow': 'Price: High to Low',
-      'nameAZ': 'Name: A to Z',
-      'nameZA': 'Name: Z to A',
-      'discount': 'Best Discount',
-    };
-    showToast(`Sorted by ${sortLabels[option]}`, 'info');
-  }, [showToast]);
+  }, []);
 
-  // Check if product is already in cart
   const isProductInCart = useCallback((productId) => {
     return cartItems.some(item => item._id === productId);
   }, [cartItems]);
 
-  // Memoize filtered products
   const filteredProducts = useMemo(() => {
     let filtered = [...allProducts];
 
@@ -354,16 +638,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
       filtered = filtered.filter(p => p.category === selectedCategory);
     }
 
-    if (searchText.trim()) {
-      const q = searchText.toLowerCase();
-      filtered = filtered.filter(p => 
-        (p.name || '').toLowerCase().includes(q) ||
-        (p.category || '').toLowerCase().includes(q) ||
-        (p.description || '').toLowerCase().includes(q)
-      );
-    }
-
-    // Apply sorting
     let sorted = [...filtered];
     switch (sortOption) {
       case 'priceLowToHigh':
@@ -386,12 +660,12 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
     }
     
     return sorted;
-  }, [allProducts, selectedCategory, searchText, sortOption]);
+  }, [allProducts, selectedCategory, sortOption]);
 
   useEffect(() => {
     setProducts(filteredProducts);
     setPage(1);
-    setHasMore(false); // Reset pagination when filtering
+    setHasMore(false);
   }, [filteredProducts]);
 
   /* ------------------------- deep link open via route ------------------------ */
@@ -429,7 +703,13 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
       (quantity ? product.variants.find(v => v.label === quantity) : null);
     
     if (selectedVariant && !selectedVariant.in_stock) {
-      showToast('This product is currently out of stock', 'error');
+      Toast.show({
+        type: 'error',
+        text1: 'Out of Stock',
+        text2: 'This product is currently out of stock',
+        position: 'bottom',
+        visibilityTime: 3000,
+      });
       return;
     }
     
@@ -448,9 +728,15 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
       setAddedProductName(product.name);
       setShowSuccessModal(true);
     } else {
-      showToast(`${product.name} has been added to your cart`, 'success');
+      Toast.show({
+        type: 'success',
+        text1: 'Added to Cart!',
+        text2: `${product.name} has been added to your cart`,
+        position: 'bottom',
+        visibilityTime: 3000,
+      });
     }
-  }, [dispatch, showToast]);
+  }, [dispatch]);
 
   /* ----------------------------- Sort Modal ----------------------------- */
 
@@ -528,7 +814,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
         onPress={() => handleShowProductDetails(item)}
         activeOpacity={0.9}
       >
-        {/* Product Image with Wishlist */}
         <View style={styles.productImageContainer}>
           {!isImageLoaded && (
             <View style={styles.imageLoadingContainer}>
@@ -552,14 +837,12 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
           )}
         </View>
 
-        {/* Product Info */}
         <View style={styles.productInfoGrid}>
           <Text style={styles.productCategory}>{item.category || 'Category'}</Text>
           <Text style={styles.productTitleGrid} numberOfLines={2}>
             {item.name}
           </Text>
 
-          {/* Rating */}
           <View style={styles.ratingContainer}>
             <View style={styles.stars}>
               {[1, 2, 3, 4, 5].map((star) => (
@@ -574,15 +857,13 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
             <Text style={styles.ratingText}>4.0 (128)</Text>
           </View>
 
-          {/* Price */}
           <View style={styles.priceContainerGrid}>
             <Text style={styles.productPriceGrid}>₹{toNum(item?.price).toFixed(2)}</Text>
-            {item.discountPercent > 0 && (
+            {item.originalPrice > 0 && item.originalPrice > item.price && (
               <Text style={styles.originalPriceGrid}>₹{toNum(item?.originalPrice).toFixed(2)}</Text>
             )}
           </View>
 
-          {/* Stock Status */}
           <View style={styles.stockContainer}>
             <View style={[
               styles.stockDot,
@@ -593,7 +874,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
             </Text>
           </View>
 
-          {/* Add to Cart / Go to Cart Button */}
           <TouchableOpacity
             style={[
               styles.addToCartButtonGrid,
@@ -618,7 +898,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
         </View>
       </TouchableOpacity>
     );
-  }, [isProductInCart, imageLoaded, handleShowProductDetails, handleAddToCart, handleImageLoad, API_URL, navigateToCart]);
+  }, [isProductInCart, imageLoaded, handleShowProductDetails, handleAddToCart, handleImageLoad, navigateToCart]);
 
   const renderListProductCard = useCallback(({ item }) => {
     const isInCart = isProductInCart(item._id);
@@ -631,7 +911,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
         onPress={() => handleShowProductDetails(item)}
         activeOpacity={0.9}
       >
-        {/* Product Image */}
         <View style={styles.productImageContainerList}>
           {!isImageLoaded && (
             <View style={styles.imageLoadingContainer}>
@@ -654,7 +933,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
           )}
         </View>
 
-        {/* Product Info */}
         <View style={styles.productInfoList}>
           <View style={styles.productHeaderList}>
             <View style={styles.productTitleContainer}>
@@ -686,7 +964,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
           <View style={styles.priceRowList}>
             <View style={styles.priceContainerList}>
               <Text style={styles.productPriceList}>₹{toNum(item?.price).toFixed(2)}</Text>
-              {item.discountPercent > 0 && (
+              {item.originalPrice > 0 && item.originalPrice > item.price && (
                 <Text style={styles.originalPriceList}>₹{toNum(item?.originalPrice).toFixed(2)}</Text>
               )}
             </View>
@@ -709,13 +987,13 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               <ShoppingBag size={16} color="#fff" />
               <Text style={styles.addToCartTextList}>
                 {isInCart ? 'GO TO CART' : (isInStock ? 'ADD' : 'OUT')}
-            </Text>
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </TouchableOpacity>
     );
-  }, [isProductInCart, imageLoaded, handleShowProductDetails, handleAddToCart, handleImageLoad, API_URL, navigateToCart]);
+  }, [isProductInCart, imageLoaded, handleShowProductDetails, handleAddToCart, handleImageLoad, navigateToCart]);
 
   const renderProductCard = useCallback(({ item }) => {
     return viewMode === 'grid' 
@@ -730,12 +1008,13 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
 
     const isInCart = isProductInCart(selectedProduct._id);
     const displayPrice = getDisplayPrice(selectedProduct, selectedQuantity);
-    const selectedVariant =
-      selectedProduct?.variants?.find(v => v.label === selectedQuantity) || null;
+    const selectedVariant = getVariantDetails(selectedProduct, selectedQuantity);
+    const originalPrice = getOriginalPrice(selectedProduct, selectedQuantity);
+    
+    const discountPercent = calculateDiscountPercent(selectedVariant);
 
     return (
       <View style={styles.productDetailsContainer}>
-        {/* Custom Header */}
         <View style={styles.detailsHeader}>
           <TouchableOpacity
             style={styles.closeButton}
@@ -764,7 +1043,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
           style={styles.detailsContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Image Gallery */}
           <View style={styles.imageGallery}>
             {mainImage ? (
               <Image 
@@ -780,9 +1058,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
             )}
           </View>
 
-          {/* Product Info */}
           <View style={styles.detailsInfoContainer}>
-            {/* Product Name and Category */}
             <View style={styles.productHeaderDetails}>
               <View style={styles.productCategoryBadge}>
                 <Text style={styles.productCategoryText}>{selectedProduct.category}</Text>
@@ -790,7 +1066,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               <Text style={styles.detailsProductName}>{selectedProduct.name}</Text>
             </View>
 
-            {/* Rating and Reviews */}
             <View style={styles.ratingSection}>
               <View style={styles.ratingBadge}>
                 <Star size={16} color="#FFD700" fill="#FFD700" />
@@ -803,44 +1078,30 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               </View>
             </View>
 
-            {/* Price Section */}
             <View style={styles.detailsPriceSection}>
               <View style={styles.priceMain}>
                 <Text style={styles.detailsPrice}>₹{toNum(displayPrice).toFixed(2)}</Text>
-                {selectedVariant?.retail_price && selectedVariant.retail_price > displayPrice ? (
-                  <>
-                    <Text style={styles.detailsOriginalPrice}>
-                      ₹{toNum(selectedVariant.retail_price).toFixed(2)}
+                {originalPrice > 0 && originalPrice > displayPrice && (
+                  <Text style={styles.detailsOriginalPrice}>
+                    ₹{toNum(originalPrice).toFixed(2)}
+                  </Text>
+                )}
+                {discountPercent > 0 && (
+                  <View style={styles.detailsDiscountBadge}>
+                    <Text style={styles.detailsDiscountText}>
+                      {discountPercent}% OFF
                     </Text>
-                    <View style={styles.detailsDiscountBadge}>
-                      <Text style={styles.detailsDiscountText}>
-                        {Math.round(
-                          ((toNum(selectedVariant.retail_price) - displayPrice) /
-                            toNum(selectedVariant.retail_price)) *
-                            100
-                          )}% OFF
-                      </Text>
-                    </View>
-                  </>
-                ) : selectedProduct.discountPercent > 0 ? (
-                  <>
-                    <Text style={styles.detailsOriginalPrice}>
-                      ₹{toNum(selectedProduct.originalPrice).toFixed(2)}
-                    </Text>
-                    <View style={styles.detailsDiscountBadge}>
-                      <Text style={styles.detailsDiscountText}>
-                        {selectedProduct.discountPercent}% OFF
-                      </Text>
-                    </View>
-                  </>
-                ) : null}
+                  </View>
+                )}
               </View>
-              <View style={styles.gstBadge}>
-                <Text style={styles.gstText}>+ GST applicable</Text>
-              </View>
+              
+              {selectedVariant && selectedVariant.gst > 0 && (
+                <View style={styles.gstBadge}>
+                  <Text style={styles.gstText}>+ {selectedVariant.gst}% GST applicable</Text>
+                </View>
+              )}
             </View>
 
-            {/* Quantity Selector */}
             {selectedProduct?.variants?.length > 1 ? (
               <View style={styles.quantitySection}>
                 <Text style={styles.quantityTitle}>Select Quantity</Text>
@@ -871,7 +1132,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
                         styles.quantityOptionPrice,
                         selectedQuantity === v.label && styles.quantityOptionPriceSelected,
                       ]}>
-                        ₹{toNum(v.final_price || v.retail_price || v.mrp).toFixed(2)}
+                        ₹{toNum(v.final_price || v.retail_price).toFixed(2)}
                       </Text>
                       {!v.in_stock && (
                         <Text style={styles.outOfStockLabel}>Out of Stock</Text>
@@ -889,7 +1150,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               </View>
             )}
 
-            {/* Description */}
             <View style={styles.detailsSection}>
               <Text style={styles.sectionTitle}>Description</Text>
               <Text style={styles.sectionContent}>
@@ -897,7 +1157,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               </Text>
             </View>
 
-            {/* Key Features */}
             <View style={styles.featuresSection}>
               <Text style={styles.sectionTitle}>Key Features</Text>
               <View style={styles.featuresGrid}>
@@ -920,7 +1179,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               </View>
             </View>
 
-            {/* Specifications */}
             {selectedProduct && (
               <View style={styles.specsSection}>
                 <Text style={styles.sectionTitle}>Specifications</Text>
@@ -949,10 +1207,41 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
                 </View>
               </View>
             )}
+            
+            {selectedVariant && (
+              <View style={styles.priceBreakdownSection}>
+                <Text style={styles.sectionTitle}>Price Breakdown</Text>
+                <View style={styles.priceBreakdownGrid}>
+                  <View style={styles.priceBreakdownItem}>
+                    <Text style={styles.priceBreakdownLabel}>MRP</Text>
+                    <Text style={styles.priceBreakdownValue}>
+                      ₹{toNum(selectedVariant.mrp).toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.priceBreakdownItem}>
+                    <Text style={styles.priceBreakdownLabel}>Discount</Text>
+                    <Text style={[styles.priceBreakdownValue, { color: '#FF6B00' }]}>
+                      {toNum(selectedVariant.discount)}%
+                    </Text>
+                  </View>
+                  <View style={styles.priceBreakdownItem}>
+                    <Text style={styles.priceBreakdownLabel}>GST</Text>
+                    <Text style={styles.priceBreakdownValue}>
+                      {toNum(selectedVariant.gst)}%
+                    </Text>
+                  </View>
+                  <View style={[styles.priceBreakdownItem, styles.priceBreakdownTotal]}>
+                    <Text style={styles.priceBreakdownLabel}>Final Price</Text>
+                    <Text style={[styles.priceBreakdownValue, styles.priceBreakdownTotalValue]}>
+                      ₹{toNum(selectedVariant.final_price || displayPrice).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
         </ScrollView>
 
-        {/* Fixed Footer */}
         <View style={styles.detailsFooter}>
           <TouchableOpacity
             style={[
@@ -1042,9 +1331,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
       <Text style={styles.emptySubtitle}>
         {subcategoryName 
           ? `No products found in "${subcategoryName}" subcategory`
-          : searchText.trim()
-            ? `No results for "${searchText}"`
-            : 'No products available in this category'
+          : 'No products available in this category'
         }
       </Text>
       <TouchableOpacity 
@@ -1056,7 +1343,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
         <Text style={styles.retryButtonText}>Refresh Products</Text>
       </TouchableOpacity>
     </View>
-  ), [searchText, subcategoryName]);
+  ), [subcategoryName]);
 
   const ListFooterComponent = useMemo(() => {
     if (!loadingMore) return null;
@@ -1089,7 +1376,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
     );
   }, [error]);
 
-  /* ---------------------------------- UI ---------------------------------- */
+  /* ---------------------------------- Main UI ---------------------------------- */
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1098,79 +1385,20 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
       {/* Modals */}
       {renderSortModal()}
       {renderSuccessModal()}
-      
 
       {showProductDetails ? (
         renderProductDetails()
       ) : (
         <>
-          {/* Main Header */}
-          <View style={styles.mainHeader}>
-            {searchActive ? (
-              <View style={styles.searchHeader}>
-                <TouchableOpacity 
-                  onPress={() => {
-                    setSearchActive(false);
-                    setSearchText('');
-                  }}
-                  style={styles.searchBackButton}
-                >
-                  <ArrowLeft size={24} color="#666" />
-                </TouchableOpacity>
-                <View style={styles.searchInputContainer}>
-                  <Search size={20} color="#666" />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search products..."
-                    placeholderTextColor="#999"
-                    value={searchText}
-                    onChangeText={setSearchText}
-                    autoFocus
-                    autoCapitalize="none"
-                  />
-                  {searchText.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchText('')}>
-                      <X size={20} color="#666" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            ) : (
-              <View style={styles.normalHeader}>
-                <TouchableOpacity 
-                  style={styles.backButton}
-                  onPress={() => navigation.goBack()}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <ArrowLeft size={24} color="#333" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>
-                  {subcategoryName ? subcategoryName : 'Premium Health Products'}
-                </Text>
-                <View style={styles.headerActions}>
-                  <TouchableOpacity 
-                    style={styles.headerButton}
-                    onPress={() => setSearchActive(true)}
-                  >
-                    <Search size={22} color="#333" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.headerButton, styles.cartButton]}
-                    onPress={navigateToCart}
-                  >
-                    <ShoppingBag size={22} color="#333" />
-                    {cartCount > 0 && (
-                      <View style={styles.cartBadge}>
-                        <Text style={styles.cartBadgeText}>
-                          {cartCount > 9 ? '9+' : cartCount}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
+          {/* Header */}
+          <Header navigation={navigation} cartCount={cartCount} />
+
+          {/* Search Bar (Home page ki tarah) */}
+          <SearchBar 
+            onSearchResultPress={handleShowProductDetails}
+            showTrending={showTrending}
+            setShowTrending={setShowTrending}
+          />
 
           {/* Error Display */}
           {error && !loading && (
@@ -1190,9 +1418,8 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
           )}
 
           {/* Content */}
-          {!loading && !error && (
+          {!loading && !error && !showTrending && (
             <>
-              {/* Only show categories section if not viewing a specific subcategory */}
               {!subcategoryId && (
                 <View style={styles.categoriesSection}>
                   <ScrollView
@@ -1273,7 +1500,7 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
               </View>
 
               {/* Products List */}
-              <Animated.FlatList
+              <FlatList
                 key={`products-${viewMode}`}
                 data={products}
                 renderItem={renderProductCard}
@@ -1293,10 +1520,6 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
                     tintColor="#FF6B00"
                   />
                 }
-                onScroll={Animated.event(
-                  [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                  { useNativeDriver: true }
-                )}
                 ListEmptyComponent={ListEmptyComponent}
                 ListFooterComponent={ListFooterComponent}
                 removeClippedSubviews={true}
@@ -1309,6 +1532,9 @@ const fetchProducts = async (pageNum = 1, isRefresh = false) => {
           )}
         </>
       )}
+      
+      {/* Toast */}
+      <Toast />
     </SafeAreaView>
   );
 }
@@ -1319,143 +1545,261 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
+    paddingTop: Platform.OS === 'ios' ? 39 : 0,
   },
   
-  // Toast Styles
-  toastContainer: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    left: 20,
-    right: 20,
-    zIndex: 9999,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-  },
-  toast: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#333',
-    marginBottom: 8,
-  },
-  toastSuccess: {
-    backgroundColor: '#FF6B00',
-  },
-  toastError: {
-    backgroundColor: '#FF4444',
-  },
-  toastWarning: {
-    backgroundColor: '#FF9800',
-  },
-  toastInfo: {
-    backgroundColor: '#2196F3',
-  },
-  toastText: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 12,
-    marginRight: 12,
-  },
-  toastCloseButton: {
-    padding: 4,
-  },
-  
-  // Main Header Styles
-  mainHeader: {
+  // Header Styles (Home page ki tarah)
+  header: {
     backgroundColor: '#fff',
+    paddingHorizontal: rs(15),
+    paddingVertical: rs(8),
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    zIndex: 1000,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  normalHeader: {
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: Platform.OS === 'ios' ? 8 : 12,
   },
   backButton: {
-    padding: 8,
+    padding: rs(8),
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-    flex: 1,
-    marginLeft: 12,
+  logo: {
+    width: rs(50),
+    height: rs(50),
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerButton: {
-    padding: 8,
-    marginLeft: 8,
+  iconButton: {
     position: 'relative',
+    padding: rs(8),
   },
   cartButton: {
     position: 'relative',
   },
   cartBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: 0,
+    right: 0,
     backgroundColor: '#FF6B00',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
     alignItems: 'center',
-    paddingHorizontal: 4,
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
   },
-  cartBadgeText: {
+  badgeText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: rs(10),
     fontWeight: 'bold',
   },
   
-  // Search Header
-  searchHeader: {
+  // Search Bar Styles (Home page se same)
+  searchBarContainer: {
+    backgroundColor: '#FF6B00',
+    padding: rs(15),
+    zIndex: 5,
+  },
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: Platform.OS === 'ios' ? 8 : 12,
+    backgroundColor: '#fff',
+    borderRadius: rs(25),
+    overflow: 'hidden',
   },
-  searchBackButton: {
-    padding: 8,
-  },
-  searchInputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginLeft: 8,
-    height: 44,
+  searchIconContainer: {
+    backgroundColor: '#FF6B00',
+    padding: rs(10),
+    borderRadius: rs(25),
   },
   searchInput: {
     flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(15),
+    fontWeight: '400',
+    color: '#333',
+    fontSize: rs(14),
+  },
+  clearButton: {
+    padding: rs(10),
+  },
+  micButton: {
+    padding: rs(10),
+  },
+  searchResultsContainer: {
+    backgroundColor: '#fff',
+    marginTop: rs(10),
+    borderRadius: rs(12),
+    maxHeight: height * 0.6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  searchResultsHeader: {
+    padding: rs(15),
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  searchResultsTitle: {
+    fontWeight: '600',
+    fontSize: rs(16),
+    color: '#333',
+    marginBottom: rs(4),
+  },
+  searchResultsSubtitle: {
+    fontSize: rs(12),
+    color: '#666',
+  },
+  searchResultsList: {
+    padding: rs(10),
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    padding: rs(10),
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  searchResultImage: {
+    width: rs(60),
+    height: rs(60),
+    borderRadius: rs(8),
+    marginRight: rs(12),
+  },
+  searchResultInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  searchResultCategory: {
+    fontSize: rs(10),
+    color: '#FF6B00',
+    fontWeight: '600',
+    marginBottom: rs(2),
+    textTransform: 'uppercase',
+  },
+  searchResultName: {
+    fontSize: rs(14),
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: rs(6),
+    lineHeight: rs(18),
+  },
+  variantIndicator: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#f0f4f8',
+    paddingHorizontal: rs(8),
+    paddingVertical: rs(2),
+    borderRadius: rs(4),
+    marginBottom: rs(6),
+  },
+  variantText: {
+    fontSize: rs(10),
+    color: '#666',
+    fontWeight: '500',
+  },
+  searchResultPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  searchResultPrice: {
+    fontSize: rs(16),
+    fontWeight: 'bold',
+    color: '#333',
+    marginRight: rs(8),
+  },
+  searchResultOriginalPrice: {
+    fontSize: rs(12),
+    color: '#999',
+    textDecorationLine: 'line-through',
+    marginRight: rs(8),
+  },
+  searchResultDiscountBadge: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: rs(6),
+    paddingVertical: rs(2),
+    borderRadius: rs(4),
+  },
+  searchResultDiscountText: {
+    color: '#fff',
+    fontSize: rs(10),
+    fontWeight: 'bold',
+  },
+  searchLoadingContainer: {
+    padding: rs(30),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchLoadingText: {
+    marginTop: rs(12),
+    fontSize: rs(14),
+    color: '#666',
+  },
+  noResultsContainer: {
+    padding: rs(40),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noResultsText: {
+    fontSize: rs(16),
+    fontWeight: '600',
+    color: '#333',
+    marginTop: rs(12),
+  },
+  noResultsSubtext: {
+    fontSize: rs(14),
+    color: '#666',
+    textAlign: 'center',
+    marginTop: rs(8),
+  },
+  trendingContainer: {
+    padding: rs(15),
+  },
+  trendingTitle: {
+    fontWeight: '600',
+    fontSize: rs(16),
+    color: '#333',
+    marginBottom: rs(10),
+  },
+  trendingTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: rs(8),
+  },
+  trendingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f4f8',
+    paddingHorizontal: rs(12),
+    paddingVertical: rs(8),
+    borderRadius: rs(20),
+    gap: rs(5),
+  },
+  trendingTagText: {
+    fontWeight: '500',
+    fontSize: rs(13),
     color: '#333',
   },
   
-  // Categories Section
+  // Rest of the styles from your original ProductsPage (unchanged)
   categoriesSection: {
     backgroundColor: '#fff',
     paddingVertical: 16,
@@ -1755,9 +2099,6 @@ const styles = StyleSheet.create({
   addToCartButtonDisabled: {
     backgroundColor: '#ccc',
   },
-  goToCartButton: {
-    backgroundColor: '#FF6B00',
-  },
   addToCartTextGrid: {
     color: '#fff',
     fontSize: 14,
@@ -1869,9 +2210,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     gap: 6,
   },
-  goToCartButton: {
-    backgroundColor: '#FF6B00',
-  },
   addToCartTextList: {
     color: '#fff',
     fontSize: 12,
@@ -1906,6 +2244,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#333',
+  },
+  headerButton: {
+    padding: 8,
+    position: 'relative',
+  },
+  cartBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
   detailsContent: {
     flex: 1,
@@ -2163,6 +2510,45 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#333',
   },
+  
+  // Price Breakdown Section
+  priceBreakdownSection: {
+    marginBottom: 24,
+  },
+  priceBreakdownGrid: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+  },
+  priceBreakdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  priceBreakdownLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  priceBreakdownValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  priceBreakdownTotal: {
+    borderTopWidth: 2,
+    borderTopColor: '#FF6B00',
+    borderBottomWidth: 0,
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  priceBreakdownTotalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF6B00',
+  },
+  
   detailsFooter: {
     flexDirection: 'row',
     padding: 16,
@@ -2187,9 +2573,6 @@ const styles = StyleSheet.create({
   },
   addToCartButtonDisabled: {
     backgroundColor: '#ccc',
-  },
-  goToCartButton: {
-    backgroundColor: '#FF6B00',
   },
   addToCartTextLarge: {
     color: '#fff',

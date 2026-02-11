@@ -34,7 +34,9 @@ import {
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
-
+const rs = (size, factor = 0.5) => {
+  return size + ((width / 400) - 1) * size * factor;
+};
 const COLORS = {
   primary: '#f26522',
   primaryLight: '#ff8a50',
@@ -579,6 +581,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    paddingTop: rs(39),
   },
   header: {
     flexDirection: 'row',

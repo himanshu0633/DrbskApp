@@ -32,7 +32,9 @@ import Toast from 'react-native-toast-message';
 import {SvgUri} from 'react-native-svg';
 
 const {width, height} = Dimensions.get('window');
-
+const rs = (size, factor = 0.5) => {
+  return size + ((width / 400) - 1) * size * factor;
+};
 const LoginScreen = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -780,6 +782,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+    paddingTop: rs(0),
   },
   header: {
     paddingHorizontal: 20,

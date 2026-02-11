@@ -13,18 +13,482 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  Animated,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSelector, useDispatch } from 'react-redux';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RazorpayCheckout from 'react-native-razorpay';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import LinearGradient from 'react-native-linear-gradient';
 
 import { deleteProduct, updateData, clearProducts } from '../../store/Action';
 import axiosInstance from '../../Components/AxiosInstance';
 import API_URL from '../../../config';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const rs = (size, factor = 0.5) => {
+  return size + ((width / 400) - 1) * size * factor;
+};
+
+// Product Normalization Functions (Fixed)
+function toNum(x, fallback = 0) {
+  if (x === null || x === undefined || x === '') return fallback;
+  const n = parseFloat(String(x).toString().replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Parse the API's `quantity` field into a clean array of variant objects */
+function parseVariants(raw) {
+  try {
+    console.log("parseVariants raw input:", raw);
+    
+    if (!raw) return [];
+    
+    let parsed = [];
+    
+    // Case 1: Already an array
+    if (Array.isArray(raw)) {
+      if (raw.length === 0) return [];
+      
+      // Case 1a: Array of strings (JSON strings)
+      if (typeof raw[0] === 'string') {
+        try {
+          parsed = JSON.parse(raw[0]);
+        } catch (e) {
+          console.warn('Failed to parse array string:', e);
+        }
+      }
+      // Case 1b: Array of objects
+      else if (typeof raw[0] === 'object') {
+        parsed = raw;
+      }
+    }
+    // Case 2: String (JSON string)
+    else if (typeof raw === 'string') {
+      try {
+        // Remove any extra quotes or formatting
+        const cleanStr = raw.replace(/\\"/g, '"').replace(/^"(.*)"$/, '$1');
+        parsed = JSON.parse(cleanStr);
+      } catch (e) {
+        console.warn('Failed to parse string:', e, 'Raw:', raw);
+        // Try to extract array from malformed JSON
+        const match = raw.match(/\[.*\]/);
+        if (match) {
+          try {
+            parsed = JSON.parse(match[0]);
+          } catch (e2) {
+            console.warn('Failed to extract array:', e2);
+          }
+        }
+      }
+    }
+    // Case 3: Object (single variant)
+    else if (typeof raw === 'object') {
+      parsed = [raw];
+    }
+
+    // Ensure parsed is an array
+    if (!Array.isArray(parsed)) {
+      parsed = [];
+    }
+
+    // Normalize variant objects
+    const normalizedVariants = parsed.map(v => {
+      // Handle both object and string values
+      const variant = v || {};
+      
+      return {
+        label: String(variant.label || variant.name || variant.quantity || 'Standard').trim(),
+        mrp: toNum(variant.mrp || variant.MRP || 0),
+        discount: toNum(variant.discount || variant.discount_percent || 0),
+        gst: toNum(variant.gst || variant.GST || 0),
+        retail_price: toNum(variant.retail_price || variant.retailPrice || 0),
+        final_price: toNum(variant.final_price || variant.finalPrice || variant.price || 0),
+        in_stock: String(variant.in_stock || variant.available || 'yes').toLowerCase() === 'yes',
+      };
+    });
+
+    console.log("parseVariants result:", normalizedVariants);
+    return normalizedVariants;
+  } catch (e) {
+    console.warn('Failed to parse variants from quantity:', e);
+    return [];
+  }
+}
+
+/** Extract product level prices from variants */
+function getProductPrices(variants) {
+  if (!variants || variants.length === 0) {
+    return {
+      retail_price: 0,
+      consumer_price: 0,
+      discount: 0,
+      gst: 0,
+      mrp: 0
+    };
+  }
+  
+  const firstVariant = variants[0];
+  return {
+    retail_price: toNum(firstVariant.retail_price),
+    consumer_price: toNum(firstVariant.final_price),
+    discount: toNum(firstVariant.discount),
+    gst: toNum(firstVariant.gst),
+    mrp: toNum(firstVariant.mrp)
+  };
+}
+
+/** Calculate discount percentage from variant data */
+function calculateDiscountPercent(variant) {
+  if (!variant) return 0;
+  
+  const mrp = toNum(variant.mrp);
+  const finalPrice = toNum(variant.final_price);
+  
+  // If discount is explicitly provided
+  if (variant.discount > 0) {
+    return Math.round(toNum(variant.discount));
+  }
+  
+  // Calculate discount from MRP and final price
+  if (mrp > 0 && finalPrice > 0 && mrp > finalPrice) {
+    const discount = ((mrp - finalPrice) / mrp) * 100;
+    return Math.round(discount);
+  }
+  
+  return 0;
+}
+
+/** Build a normalized product with price/originalPrice/discountPercent & variants */
+function normalizeProduct(p) {
+  console.log("=== NORMALIZE PRODUCT ===");
+  console.log("Input product:", p?.name);
+  console.log("Raw quantity field:", p?.quantity);
+  
+  if (!p) {
+    console.warn("Product is null or undefined");
+    return null;
+  }
+
+  // Try to parse variants from quantity field
+  const variants = parseVariants(p.quantity);
+  console.log("Parsed variants:", variants);
+
+  // If no variants from quantity, check if product has direct variants
+  let finalVariants = variants;
+  if (variants.length === 0 && p.variants && Array.isArray(p.variants)) {
+    console.log("Using direct variants from product object");
+    finalVariants = parseVariants(p.variants);
+  }
+
+  // Get product level prices
+  const productPrices = getProductPrices(finalVariants);
+  console.log("Product prices from variants:", productPrices);
+
+  // Calculate display prices
+  let price = 0;
+  let originalPrice = 0;
+  let discountPercent = 0;
+  
+  if (finalVariants.length > 0) {
+    // Use first variant for display
+    const firstVariant = finalVariants[0];
+    price = toNum(firstVariant.final_price || firstVariant.retail_price || 0);
+    originalPrice = toNum(firstVariant.mrp || 0);
+    discountPercent = calculateDiscountPercent(firstVariant);
+    console.log("Using variant prices:", { price, originalPrice, discountPercent });
+  } else {
+    // Fallback to direct product prices
+    price = toNum(p.price || p.final_price || p.retail_price || 0);
+    originalPrice = toNum(p.mrp || 0);
+    discountPercent = toNum(p.discount || 0);
+    console.log("Using direct product prices:", { price, originalPrice, discountPercent });
+  }
+
+  // Build normalized product
+  const normalized = {
+    ...p,
+    price,
+    originalPrice,
+    discountPercent,
+    variants: finalVariants,
+    retail_price: productPrices.retail_price || toNum(p.retail_price),
+    consumer_price: productPrices.consumer_price || toNum(p.consumer_price),
+    discount_value: productPrices.discount || toNum(p.discount),
+    gst: productPrices.gst || toNum(p.gst),
+    mrp: productPrices.mrp || toNum(p.mrp)
+  };
+
+  console.log("Normalized product result:", normalized);
+  return normalized;
+}
+
+/** Get the display price for a product based on a selected variant label */
+function getDisplayPrice(product, selectedLabel) {
+  if (!product?.variants?.length) {
+    return toNum(product?.consumer_price || product?.price || product?.retail_price || 0);
+  }
+  
+  if (selectedLabel) {
+    const v = product.variants.find(x => x.label === selectedLabel);
+    if (v) {
+      return toNum(v.final_price || v.retail_price || 0);
+    }
+  }
+  
+  // Return price from first variant
+  const firstVariant = product.variants[0];
+  return toNum(firstVariant.final_price || firstVariant.retail_price || 0);
+}
+
+/** Get variant details for selected variant */
+function getVariantDetails(product, selectedLabel) {
+  if (!product?.variants?.length || !selectedLabel) return null;
+  return product.variants.find(x => x.label === selectedLabel);
+}
+
+/** Get the original price (MRP) for display */
+function getOriginalPrice(product, selectedLabel) {
+  if (!product?.variants?.length) {
+    return toNum(product?.mrp || product?.originalPrice || 0);
+  }
+  
+  if (selectedLabel) {
+    const v = product.variants.find(x => x.label === selectedLabel);
+    if (v) return toNum(v.mrp || 0);
+  }
+  
+  const firstVariant = product.variants[0];
+  return toNum(firstVariant.mrp || 0);
+}
+
+// Lucide Icons Import
+import {
+  ArrowLeft,
+  Star,
+  Shield,
+  Package,
+  Truck,
+  RotateCcw,
+  Clock,
+  ShoppingBag,
+  AlertCircle,
+  X,
+} from 'lucide-react-native';
+
+// Clear Cart Modal Component
+const ClearCartModal = ({ visible, onClose, onConfirm }) => {
+  const slideAnim = useRef(new Animated.Value(height)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 100,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: height,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      transparent={true}
+      animationType="none"
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+        <Animated.View 
+          style={[
+            styles.clearModalContainer, 
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.clearModalHeader}>
+            <View style={styles.clearModalIconContainer}>
+              <AlertCircle size={30} color="#FF6B00" />
+            </View>
+            <TouchableOpacity 
+              style={styles.clearModalCloseBtn}
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={22} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <View style={styles.clearModalContent}>
+            <Text style={styles.clearModalTitle}>Clear Cart</Text>
+            <Text style={styles.clearModalDescription}>
+              Are you sure you want to remove all items from your cart? This action cannot be undone.
+            </Text>
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.clearModalButtons}>
+            <TouchableOpacity
+              style={styles.clearModalCancelBtn}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.clearModalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.clearModalConfirmBtn}
+              onPress={onConfirm}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#FF6B00', '#FF8E53']}
+                style={styles.clearModalGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.clearModalConfirmText}>Clear All</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
+
+// Remove Item Modal Component
+const RemoveItemModal = ({ visible, onClose, onConfirm, itemName }) => {
+  const slideAnim = useRef(new Animated.Value(height)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 100,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: height,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      transparent={true}
+      animationType="none"
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+        <Animated.View 
+          style={[
+            styles.removeModalContainer, 
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          {/* Header */}
+          <View style={styles.removeModalHeader}>
+            <View style={styles.removeModalIconContainer}>
+              <AlertCircle size={30} color="#FF6B00" />
+            </View>
+            <TouchableOpacity 
+              style={styles.removeModalCloseBtn}
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={22} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Content */}
+          <View style={styles.removeModalContent}>
+            <Text style={styles.removeModalTitle}>Remove Item</Text>
+            <Text style={styles.removeModalDescription}>
+              Are you sure you want to remove "{itemName}" from your cart?
+            </Text>
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.removeModalButtons}>
+            <TouchableOpacity
+              style={styles.removeModalCancelBtn}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.removeModalCancelText}>Keep Item</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.removeModalConfirmBtn}
+              onPress={onConfirm}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={['#FF4444', '#FF6B6B']}
+                style={styles.removeModalGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                
+                <Text style={styles.removeModalConfirmText}>Remove</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
 
 const Cart = () => {
   const cartItems = useSelector((state) => state.app.data || []);
@@ -40,6 +504,16 @@ const Cart = () => {
   const [cities, setCities] = useState([]);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  
+  // Product Details Modal State
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showProductDetails, setShowProductDetails] = useState(false);
+  const [mainImage, setMainImage] = useState(null);
+  const [selectedQuantity, setSelectedQuantity] = useState(null);
+  
+  // Dropdown visibility states
+  const [showStateDropdown, setShowStateDropdown] = useState(false);
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
   
   // User info state
   const [formData, setFormData] = useState({
@@ -59,7 +533,15 @@ const Cart = () => {
   
   // User data state
   const [userData, setUserData] = useState(null);
-
+  
+  // Clear Cart Modal State
+  const [showClearCartModal, setShowClearCartModal] = useState(false);
+  
+  // Remove Item Modal State
+  const [showRemoveItemModal, setShowRemoveItemModal] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState(null);
+  const [itemNameToRemove, setItemNameToRemove] = useState('');
+  
   // Ref to track if component is mounted
   const isMounted = useRef(true);
 
@@ -80,8 +562,12 @@ const Cart = () => {
     try {
       let price = 0;
       
-      // Check for final_price first
-      if (item.final_price) {
+      // Check for selectedVariant price first
+      if (item.selectedVariant && item.selectedVariant.final_price) {
+        price = parseFloat(item.selectedVariant.final_price);
+      }
+      // Check for final_price
+      else if (item.final_price) {
         price = parseFloat(item.final_price);
       } 
       // Then check for price
@@ -174,6 +660,58 @@ const Cart = () => {
     }
   }, [formData.selectedAddress]);
 
+  // Load states from API
+  const loadStates = async () => {
+    try {
+      console.log('Loading states...');
+      setLoading(true);
+      const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/states', {
+        country: 'India'
+      });
+      if (res.data.data && res.data.data.states) {
+        const stateNames = res.data.data.states.map(s => s.name);
+        setStates(stateNames);
+        console.log('States loaded:', stateNames.length);
+      }
+    } catch (err) {
+      console.error('Error fetching states', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load states. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load cities when state changes
+  const loadCities = async (stateName) => {
+    if (!stateName) return;
+    
+    try {
+      console.log('Fetching cities for state:', stateName);
+      setLoading(true);
+      const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/state/cities', {
+        country: 'India',
+        state: stateName
+      });
+      if (res.data.data) {
+        setCities(res.data.data);
+        console.log('Cities loaded:', res.data.data.length);
+      }
+    } catch (err) {
+      console.error('Error fetching cities', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to load cities. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load data on focus
   useFocusEffect(
     useCallback(() => {
@@ -181,16 +719,11 @@ const Cart = () => {
       
       const loadData = async () => {
         if (isActive) {
-          setLoading(true);
           try {
             await initializeData();
             await loadStates();
           } catch (error) {
             console.error('Error loading cart data:', error);
-          } finally {
-            if (isActive) {
-              setLoading(false);
-            }
           }
         }
       };
@@ -203,43 +736,132 @@ const Cart = () => {
     }, [initializeData])
   );
 
-  // Load states
-  const loadStates = async () => {
-    try {
-      console.log('Loading states...');
-      const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/states', {
-        country: 'India'
-      });
-      if (res.data.data && res.data.data.states) {
-        const stateNames = res.data.data.states.map(s => s.name);
-        setStates(stateNames);
-        console.log('States loaded:', stateNames.length);
-      }
-    } catch (err) {
-      console.error('Error fetching states', err);
+  // Handle state selection
+  const handleStateSelect = (stateName) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      state: stateName,
+      city: '' // Reset city when state changes
+    }));
+    setShowStateDropdown(false);
+    
+    // Load cities for selected state
+    if (stateName) {
+      loadCities(stateName);
     }
   };
 
-  // Handle product click - navigate to product details
-  const handleProductClick = useCallback((item) => {
-    // Create a normalized product object for the product details page
-    const productForDetails = {
-      ...item,
-      // Ensure we have all required fields for product details page
-      category: item.category || 'General',
-      description: item.description || '',
-      variants: item.variants || [],
-      media: item.media || [],
-      price: getItemPrice(item),
-    };
-    
-    // Navigate to Products page with the selected product
-    navigation.navigate('Products', {
-      selectedProduct: productForDetails
-    });
-  }, [navigation, getItemPrice]);
+  // Handle city selection
+  const handleCitySelect = (cityName) => {
+    setFormData(prev => ({ ...prev, city: cityName }));
+    setShowCityDropdown(false);
+  };
 
-  // Handle quantity change
+  // Handle product click - OPEN MODAL
+  const handleProductClick = useCallback((item) => {
+    console.log('=== PRODUCT CLICKED ===');
+    console.log('Cart item:', item);
+    console.log('Item keys:', Object.keys(item));
+    console.log('Item quantity field:', item.quantity);
+    
+    // Normalize the product
+    const normalizedProduct = normalizeProduct(item);
+    console.log('Normalized product:', normalizedProduct);
+    
+    if (!normalizedProduct) {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Could not load product details',
+      });
+      return;
+    }
+    
+    setSelectedProduct(normalizedProduct);
+    
+    // Get image URL
+    const imageUrl = getProductImageUrl(normalizedProduct);
+    console.log('Main image URL:', imageUrl);
+    setMainImage(imageUrl);
+    
+    // Set default selected quantity
+    const availableVariants = normalizedProduct?.variants || [];
+    const defaultVariant = availableVariants.find(v => v.in_stock) || availableVariants[0];
+    const defaultLabel = defaultVariant?.label || null;
+    console.log('Default selected quantity:', defaultLabel);
+    setSelectedQuantity(defaultLabel);
+    
+    setShowProductDetails(true);
+  }, []);
+
+  // Get product image URL
+  const getProductImageUrl = (item) => {
+    try {
+      console.log('Getting image for:', item?.name);
+      
+      // Priority 1: Check if item has media array with URL
+      if (item?.media && Array.isArray(item.media) && item.media.length > 0) {
+        const firstMedia = item.media[0];
+        if (firstMedia && firstMedia.url) {
+          // Check if URL is already absolute
+          if (firstMedia.url.startsWith('http://') || firstMedia.url.startsWith('https://')) {
+            console.log('Using absolute media URL:', firstMedia.url);
+            return firstMedia.url;
+          }
+          
+          // If relative URL, prepend API_URL
+          const fullUrl = `${API_URL}${firstMedia.url}`;
+          console.log('Using relative media URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Priority 2: Check if product has direct image property
+      if (item?.image) {
+        if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
+          console.log('Using absolute image URL:', item.image);
+          return item.image;
+        } else {
+          const fullUrl = `${API_URL}${item.image}`;
+          console.log('Using relative image URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Priority 3: Check for product_image
+      if (item?.product_image) {
+        if (item.product_image.startsWith('http://') || item.product_image.startsWith('https://')) {
+          console.log('Using absolute product_image URL:', item.product_image);
+          return item.product_image;
+        } else {
+          const fullUrl = `${API_URL}${item.product_image}`;
+          console.log('Using relative product_image URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Priority 4: Check for selectedVariant image
+      if (item?.selectedVariant && item.selectedVariant.image) {
+        if (item.selectedVariant.image.startsWith('http://') || item.selectedVariant.image.startsWith('https://')) {
+          console.log('Using variant absolute image URL:', item.selectedVariant.image);
+          return item.selectedVariant.image;
+        } else {
+          const fullUrl = `${API_URL}${item.selectedVariant.image}`;
+          console.log('Using variant relative image URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Fallback to placeholder
+      console.log('No image found, using placeholder');
+      return 'https://via.placeholder.com/300x300?text=No+Image';
+    } catch (error) {
+      console.error('Error getting product image:', error);
+      return 'https://via.placeholder.com/300x300?text=Error';
+    }
+  };
+
+  // Handle quantity change in cart
   const handleQuantityChange = useCallback((itemId, newQuantity, e) => {
     if (e) {
       e.stopPropagation();
@@ -259,31 +881,48 @@ const Cart = () => {
   }, [cartItems, dispatch]);
 
   // Handle remove item
-  const handleRemoveItem = useCallback((itemId, e) => {
+  const handleRemoveItem = useCallback((itemId, itemName, e) => {
     if (e) {
       e.stopPropagation();
     }
     
-    Alert.alert(
-      'Remove Item',
-      'Are you sure you want to remove this item from your cart?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
-          style: 'destructive',
-          onPress: () => {
-            dispatch(deleteProduct(itemId));
-            Toast.show({
-              type: 'info',
-              text1: 'Removed',
-              text2: 'Item removed from cart.',
-            });
-          }
-        }
-      ]
-    );
-  }, [dispatch]);
+    // Set the item details to remove
+    setItemToRemove(itemId);
+    setItemNameToRemove(itemName);
+    // Show the modal
+    setShowRemoveItemModal(true);
+  }, []);
+
+  // Confirm remove item function
+  const confirmRemoveItem = () => {
+    if (itemToRemove) {
+      dispatch(deleteProduct(itemToRemove));
+      Toast.show({
+        type: 'info',
+        text1: 'Removed',
+        text2: 'Item removed from cart.',
+      });
+    }
+    // Close modal and reset states
+    setShowRemoveItemModal(false);
+    setItemToRemove(null);
+    setItemNameToRemove('');
+  };
+
+  // Handle clear cart
+  const handleClearCart = () => {
+    setShowClearCartModal(true);
+  };
+
+  const confirmClearCart = () => {
+    dispatch(clearProducts());
+    setShowClearCartModal(false);
+    Toast.show({
+      type: 'info',
+      text1: 'Cart Cleared',
+      text2: 'Your cart has been cleared.',
+    });
+  };
 
   // Handle email change
   const handleEmailChange = (email) => {
@@ -305,25 +944,6 @@ const Cart = () => {
       if (value.length === 10) {
         AsyncStorage.setItem('guestPhone', value);
       }
-    }
-  };
-
-  // Fetch cities when state changes
-  const fetchCities = async (stateName) => {
-    if (!stateName) return;
-    
-    try {
-      console.log('Fetching cities for state:', stateName);
-      const res = await axiosInstance.post('https://countriesnow.space/api/v0.1/countries/state/cities', {
-        country: 'India',
-        state: stateName
-      });
-      if (res.data.data) {
-        setCities(res.data.data);
-        console.log('Cities loaded:', res.data.data.length);
-      }
-    } catch (err) {
-      console.error('Error fetching cities', err);
     }
   };
 
@@ -786,81 +1406,6 @@ const Cart = () => {
     }
   };
 
-  // Get product image URL
-  const getProductImageUrl = (item) => {
-    try {
-      // Priority 1: Check if item has media array with URL
-      if (item.media && Array.isArray(item.media) && item.media.length > 0) {
-        const firstMedia = item.media[0];
-        if (firstMedia && firstMedia.url) {
-          // Check if URL is already absolute
-          if (firstMedia.url.startsWith('http://') || firstMedia.url.startsWith('https://')) {
-            return firstMedia.url;
-          }
-          
-          // If relative URL, prepend API_URL
-          return `${API_URL}${firstMedia.url}`;
-        }
-      }
-      
-      // Priority 2: Check if product has direct image property
-      if (item.image) {
-        if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
-          return item.image;
-        } else {
-          return `${API_URL}${item.image}`;
-        }
-      }
-      
-      // Priority 3: Check for product_image
-      if (item.product_image) {
-        if (item.product_image.startsWith('http://') || item.product_image.startsWith('https://')) {
-          return item.product_image;
-        } else {
-          return `${API_URL}${item.product_image}`;
-        }
-      }
-      
-      // Priority 4: Check for selectedVariant image
-      if (item.selectedVariant && item.selectedVariant.image) {
-        if (item.selectedVariant.image.startsWith('http://') || item.selectedVariant.image.startsWith('https://')) {
-          return item.selectedVariant.image;
-        } else {
-          return `${API_URL}${item.selectedVariant.image}`;
-        }
-      }
-      
-      // Fallback to placeholder
-      return 'https://via.placeholder.com/100x100?text=No+Image';
-    } catch (error) {
-      console.error('Error getting product image:', error);
-      return 'https://via.placeholder.com/100x100?text=Error';
-    }
-  };
-
-  // Clear cart
-  const clearCart = () => {
-    Alert.alert(
-      'Clear Cart',
-      'Are you sure you want to remove all items from your cart?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Clear All', 
-          style: 'destructive',
-          onPress: () => {
-            dispatch(clearProducts());
-            Toast.show({
-              type: 'info',
-              text1: 'Cart Cleared',
-              text2: 'Your cart has been cleared.',
-            });
-          }
-        }
-      ]
-    );
-  };
-
   // Render address item
   const renderAddressItem = (addr, index) => {
     const addressText = typeof addr === 'object' ? addr.fullAddress : addr;
@@ -920,7 +1465,421 @@ const Cart = () => {
     );
   };
 
-  // Render processing loader
+  
+ // Render product details modal
+const renderProductDetails = () => {
+  if (!selectedProduct) {
+    console.log("No selected product to show");
+    return null;
+  }
+
+  console.log("Rendering product details for:", selectedProduct.name);
+  console.log("Selected product data:", {
+    name: selectedProduct.name,
+    variants: selectedProduct.variants,
+    price: selectedProduct.price,
+    mrp: selectedProduct.mrp,
+    selectedQuantity: selectedQuantity
+  });
+
+  const variants = selectedProduct.variants || [];
+  const isInCart = cartItems.some(item => item._id === selectedProduct._id);
+  
+  // Get selected variant details
+  const selectedVariant = selectedQuantity 
+    ? variants.find(v => v && v.label === selectedQuantity)
+    : variants[0];
+    
+  console.log("Selected variant:", selectedVariant);
+
+  // Calculate display prices
+  const displayPrice = selectedVariant 
+    ? toNum(selectedVariant.final_price || selectedVariant.retail_price || 0)
+    : toNum(selectedProduct.price || selectedProduct.final_price || selectedProduct.retail_price || 0);
+    
+  const originalPrice = selectedVariant 
+    ? toNum(selectedVariant.mrp || 0)
+    : toNum(selectedProduct.mrp || selectedProduct.originalPrice || 0);
+    
+  const discountPercent = calculateDiscountPercent(selectedVariant) || selectedProduct.discountPercent || 0;
+
+  // Get variant prices for breakdown
+  const variantMRP = selectedVariant ? toNum(selectedVariant.mrp) : toNum(selectedProduct.mrp);
+  const variantRetailPrice = selectedVariant ? toNum(selectedVariant.retail_price) : toNum(selectedProduct.retail_price);
+  const variantFinalPrice = selectedVariant ? toNum(selectedVariant.final_price) : toNum(selectedProduct.final_price || displayPrice);
+  const variantDiscount = selectedVariant ? toNum(selectedVariant.discount) : toNum(selectedProduct.discount_value);
+  const variantGST = selectedVariant ? toNum(selectedVariant.gst) : toNum(selectedProduct.gst);
+
+  console.log("Price calculations:", {
+    displayPrice,
+    originalPrice,
+    discountPercent,
+    variantMRP,
+    variantRetailPrice,
+    variantFinalPrice
+  });
+
+  return (
+    <Modal
+      animationType="slide"
+      transparent={false}
+      visible={showProductDetails}
+      onRequestClose={() => setShowProductDetails(false)}
+    >
+      <SafeAreaView style={styles.productDetailsContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        
+        {/* Custom Header */}
+        <View style={styles.detailsHeader}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setShowProductDetails(false)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowLeft size={24} color="#000" />
+          </TouchableOpacity>
+          <Text style={styles.detailsTitle}>Product Details</Text>
+          <TouchableOpacity 
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('Cart')}
+          >
+            <ShoppingBag size={22} color="#333" />
+            {cartItems.length > 0 && (
+              <View style={styles.cartBadgeModal}>
+                <Text style={styles.cartBadgeTextModal}>
+                  {cartItems.length > 9 ? '9+' : cartItems.length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView 
+          style={styles.detailsContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Image Gallery */}
+          <View style={styles.imageGallery}>
+            {mainImage ? (
+              <Image 
+                source={{ uri: mainImage }} 
+                style={styles.detailsImage} 
+                resizeMode="contain" 
+                onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+              />
+            ) : (
+              <View style={styles.noImageContainer}>
+                <Package size={60} color="#ccc" />
+                <Text style={styles.noImageText}>No image available</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Product Info */}
+          <View style={styles.detailsInfoContainer}>
+            {/* Product Name and Category */}
+            <View style={styles.productHeaderDetails}>
+              <View style={styles.productCategoryBadge}>
+                <Text style={styles.productCategoryText}>
+                  {selectedProduct.category || 'General'}
+                </Text>
+              </View>
+              <Text style={styles.detailsProductName}>
+                {selectedProduct.name || 'Product'}
+              </Text>
+            </View>
+
+            {/* Rating and Reviews */}
+            <View style={styles.ratingSection}>
+              <View style={styles.ratingBadge}>
+                <Star size={16} color="#FFD700" fill="#FFD700" />
+                <Text style={styles.ratingValue}>4.5</Text>
+                <Text style={styles.ratingCount}>(128 reviews)</Text>
+              </View>
+              <View style={styles.deliveryBadge}>
+                <Truck size={16} color="#FF6B00" />
+                <Text style={styles.deliveryText}>Free Delivery</Text>
+              </View>
+            </View>
+
+            {/* Price Section */}
+            <View style={styles.detailsPriceSection}>
+              <View style={styles.priceMain}>
+                <Text style={styles.detailsPrice}>₹{displayPrice.toFixed(2)}</Text>
+                
+                {/* Show Original Price (MRP) if different from display price */}
+                {originalPrice > 0 && originalPrice > displayPrice && (
+                  <Text style={styles.detailsOriginalPrice}>
+                    ₹{originalPrice.toFixed(2)}
+                  </Text>
+                )}
+                
+                {/* Show Discount Badge */}
+                {discountPercent > 0 && (
+                  <View style={styles.detailsDiscountBadge}>
+                    <Text style={styles.detailsDiscountText}>
+                      {discountPercent}% OFF
+                    </Text>
+                  </View>
+                )}
+              </View>
+              
+              {/* Display GST information */}
+              {variantGST > 0 && (
+                <View style={styles.gstBadge}>
+                  <Text style={styles.gstText}>+ {variantGST}% GST applicable</Text>
+                </View>
+              )}
+              
+              {/* Display Final Price if different */}
+              {variantFinalPrice > 0 && variantFinalPrice !== displayPrice && (
+                <View style={styles.finalPriceBadge}>
+                  <Text style={styles.finalPriceText}>
+                    Final Price: ₹{variantFinalPrice.toFixed(2)}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Quantity Selector */}
+            {variants.length > 1 ? (
+              <View style={styles.quantitySection}>
+                <Text style={styles.quantityTitle}>Select Quantity</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.quantityScroll}
+                >
+                  {variants.map((v, index) => {
+                    if (!v) return null;
+                    
+                    const variantPrice = toNum(v.final_price || v.retail_price);
+                    const variantMrp = toNum(v.mrp);
+                    const variantDiscountValue = toNum(v.discount);
+                    const isSelected = selectedQuantity === v.label;
+                    
+                    return (
+                      <TouchableOpacity
+                        key={`${v.label}-${index}`}
+                        style={[
+                          styles.quantityOption,
+                          isSelected && styles.quantityOptionSelected,
+                          !v.in_stock && styles.quantityOptionDisabled,
+                        ]}
+                        onPress={() => v.in_stock && setSelectedQuantity(v.label)}
+                        disabled={!v.in_stock}
+                      >
+                        <Text style={[
+                          styles.quantityOptionText,
+                          isSelected && styles.quantityOptionTextSelected,
+                          !v.in_stock && styles.quantityOptionTextDisabled,
+                        ]}>
+                          {v.label}
+                        </Text>
+                        <Text style={[
+                          styles.quantityOptionPrice,
+                          isSelected && styles.quantityOptionPriceSelected,
+                        ]}>
+                          ₹{variantPrice.toFixed(2)}
+                        </Text>
+                        
+                        {/* Show variant discount if available */}
+                        {variantDiscountValue > 0 && (
+                          <Text style={styles.variantDiscountText}>
+                            {variantDiscountValue}% OFF
+                          </Text>
+                        )}
+                        
+                        {!v.in_stock && (
+                          <Text style={styles.outOfStockLabel}>Out of Stock</Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            ) : variants.length === 1 ? (
+              <View style={styles.singleQuantity}>
+                <Text style={styles.singleQuantityLabel}>Available: </Text>
+                <Text style={styles.singleQuantityValue}>
+                  {variants[0]?.label || 'Standard Pack'}
+                </Text>
+                {!variants[0]?.in_stock && (
+                  <Text style={styles.outOfStockText}> - Out of Stock</Text>
+                )}
+              </View>
+            ) : null}
+
+            {/* Description */}
+            <View style={styles.detailsSection}>
+              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.sectionContent}>
+                {selectedProduct.description || 'No description available'}
+              </Text>
+            </View>
+
+            {/* Key Features */}
+            <View style={styles.featuresSection}>
+              <Text style={styles.sectionTitle}>Key Features</Text>
+              <View style={styles.featuresGrid}>
+                <View style={styles.featureItem}>
+                  <Shield size={20} color="#FF6B00" />
+                  <Text style={styles.featureText}>100% Authentic</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Package size={20} color="#2196F3" />
+                  <Text style={styles.featureText}>Secure Packaging</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <RotateCcw size={20} color="#FF9800" />
+                  <Text style={styles.featureText}>Easy Returns</Text>
+                </View>
+                <View style={styles.featureItem}>
+                  <Clock size={20} color="#9C27B0" />
+                  <Text style={styles.featureText}>24/7 Support</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Specifications */}
+            <View style={styles.specsSection}>
+              <Text style={styles.sectionTitle}>Specifications</Text>
+              <View style={styles.specsGrid}>
+                <View style={styles.specItem}>
+                  <Text style={styles.specLabel}>Category</Text>
+                  <Text style={styles.specValue}>{selectedProduct.category || '—'}</Text>
+                </View>
+                <View style={styles.specItem}>
+                  <Text style={styles.specLabel}>Sub Category</Text>
+                  <Text style={styles.specValue}>{selectedProduct.sub_category || '—'}</Text>
+                </View>
+                <View style={styles.specItem}>
+                  <Text style={styles.specLabel}>Expiry Date</Text>
+                  <Text style={styles.specValue}>{selectedProduct.expires_on || '—'}</Text>
+                </View>
+                <View style={[styles.specItem, styles.specItemLast]}>
+                  <Text style={styles.specLabel}>Availability</Text>
+                  <Text style={[
+                    styles.specValue,
+                    { color: selectedVariant?.in_stock ? '#4CAF50' : '#F44336' }
+                  ]}>
+                    {selectedVariant?.in_stock ? 'In Stock' : 'Out of Stock'}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Price Breakdown */}
+            <View style={styles.priceBreakdownSection}>
+              <Text style={styles.sectionTitle}>Price Breakdown</Text>
+              <View style={styles.priceBreakdownGrid}>
+                <View style={styles.priceBreakdownItem}>
+                  <Text style={styles.priceBreakdownLabel}>Maximum Retail Price (MRP)</Text>
+                  <Text style={styles.priceBreakdownValue}>
+                    ₹{variantMRP.toFixed(2)}
+                  </Text>
+                </View>
+                
+                <View style={styles.priceBreakdownItem}>
+                  <Text style={styles.priceBreakdownLabel}>Retail Price</Text>
+                  <Text style={styles.priceBreakdownValue}>
+                    ₹{variantRetailPrice.toFixed(2)}
+                  </Text>
+                </View>
+                
+                {variantDiscount > 0 && (
+                  <View style={styles.priceBreakdownItem}>
+                    <Text style={styles.priceBreakdownLabel}>Discount</Text>
+                    <Text style={[styles.priceBreakdownValue, { color: '#FF6B00', fontWeight: 'bold' }]}>
+                      {variantDiscount}% OFF
+                    </Text>
+                  </View>
+                )}
+                
+                {variantGST > 0 && (
+                  <View style={styles.priceBreakdownItem}>
+                    <Text style={styles.priceBreakdownLabel}>GST</Text>
+                    <Text style={styles.priceBreakdownValue}>
+                      {variantGST}%
+                    </Text>
+                  </View>
+                )}
+                
+                <View style={[styles.priceBreakdownItem, styles.priceBreakdownTotal]}>
+                  <Text style={styles.priceBreakdownLabel}>Final Price (Including all taxes)</Text>
+                  <Text style={[styles.priceBreakdownValue, styles.priceBreakdownTotalValue]}>
+                    ₹{variantFinalPrice.toFixed(2)}
+                  </Text>
+                </View>
+                
+                {/* Savings Calculation */}
+                {variantMRP > 0 && variantFinalPrice > 0 && variantMRP > variantFinalPrice && (
+                  <View style={styles.savingsContainer}>
+                    <Text style={styles.savingsLabel}>You Save</Text>
+                    <Text style={styles.savingsValue}>
+                      ₹{(variantMRP - variantFinalPrice).toFixed(2)}
+                      {variantDiscount > 0 && ` (${variantDiscount}%)`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Fixed Footer */}
+        <View style={styles.detailsFooter}>
+          <TouchableOpacity
+            style={[
+              styles.addToCartButtonLarge,
+              (!selectedVariant?.in_stock || !variants.some(v => v?.in_stock)) && 
+                styles.addToCartButtonDisabled,
+              isInCart && styles.goToCartButton
+            ]}
+            onPress={() => {
+              if (isInCart) {
+                // Already in cart, just close modal
+                setShowProductDetails(false);
+              } else {
+                // Add to cart logic here
+                const priceToUse = displayPrice;
+                
+                const payload = {
+                  ...selectedProduct,
+                  selectedQuantity: selectedQuantity,
+                  selectedVariant: selectedVariant,
+                  price: priceToUse,
+                  addedAt: new Date().toISOString(),
+                  quantity: 1,
+                };
+                
+                dispatch(updateData(payload));
+                
+                Toast.show({
+                  type: 'success',
+                  text1: 'Added to Cart!',
+                  text2: `${selectedProduct.name} has been added to your cart`,
+                });
+                
+                setShowProductDetails(false);
+              }
+            }}
+            disabled={!selectedVariant?.in_stock}
+          >
+            <ShoppingBag size={22} color="#fff" />
+            <Text style={styles.addToCartTextLarge}>
+              {isInCart ? 'View in Cart' : (selectedVariant?.in_stock ? 'Add to Cart' : 'Out of Stock')}
+            </Text>
+            {selectedVariant?.in_stock && !isInCart && (
+              <Text style={styles.addToCartPrice}>₹{displayPrice.toFixed(2)}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </Modal>
+  );
+};
+
   const renderProcessingLoader = () => (
     <Modal
       transparent={true}
@@ -946,6 +1905,96 @@ const Cart = () => {
           <Text style={styles.processingNote}>
             Please do not close this window
           </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render state dropdown modal
+  const renderStateDropdown = () => (
+    <Modal
+      visible={showStateDropdown}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowStateDropdown(false)}
+    >
+      <View style={styles.dropdownOverlay}>
+        <View style={styles.dropdownContainer}>
+          <View style={styles.dropdownHeader}>
+            <Text style={styles.dropdownTitle}>Select State</Text>
+            <TouchableOpacity onPress={() => setShowStateDropdown(false)}>
+              <Icon name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          {loading ? (
+            <View style={styles.dropdownLoading}>
+              <ActivityIndicator size="large" color="#FF6B00" />
+              <Text style={styles.dropdownLoadingText}>Loading states...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.dropdownScroll}>
+              {states.map((state, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.dropdownItem}
+                  onPress={() => handleStateSelect(state)}
+                >
+                  <Text style={styles.dropdownItemText}>{state}</Text>
+                  {formData.state === state && (
+                    <Icon name="check" size={20} color="#FF6B00" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Render city dropdown modal
+  const renderCityDropdown = () => (
+    <Modal
+      visible={showCityDropdown}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowCityDropdown(false)}
+    >
+      <View style={styles.dropdownOverlay}>
+        <View style={styles.dropdownContainer}>
+          <View style={styles.dropdownHeader}>
+            <Text style={styles.dropdownTitle}>Select City</Text>
+            <TouchableOpacity onPress={() => setShowCityDropdown(false)}>
+              <Icon name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          {loading ? (
+            <View style={styles.dropdownLoading}>
+              <ActivityIndicator size="large" color="#FF6B00" />
+              <Text style={styles.dropdownLoadingText}>Loading cities...</Text>
+            </View>
+          ) : cities.length === 0 ? (
+            <View style={styles.dropdownEmpty}>
+              <Text style={styles.dropdownEmptyText}>
+                Please select a state first
+              </Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.dropdownScroll}>
+              {cities.map((city, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.dropdownItem}
+                  onPress={() => handleCitySelect(city)}
+                >
+                  <Text style={styles.dropdownItemText}>{city}</Text>
+                  {formData.city === city && (
+                    <Icon name="check" size={20} color="#FF6B00" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
@@ -1017,32 +2066,12 @@ const Cart = () => {
               <Text style={styles.inputLabel}>State *</Text>
               <TouchableOpacity
                 style={styles.pickerButton}
-                onPress={() => {
-                  if (states.length === 0) {
-                    Toast.show({
-                      type: 'info',
-                      text1: 'Loading',
-                      text2: 'Loading states...',
-                    });
-                    return;
-                  }
-                  
-                  Alert.alert(
-                    'Select State',
-                    '',
-                    states.map(state => ({
-                      text: state,
-                      onPress: () => {
-                        setFormData(prev => ({ ...prev, state, city: '' }));
-                        fetchCities(state);
-                      }
-                    })).concat([{ text: 'Cancel', style: 'cancel' }])
-                  );
-                }}
+                onPress={() => setShowStateDropdown(true)}
               >
                 <Text style={formData.state ? styles.pickerText : styles.pickerPlaceholder}>
                   {formData.state || 'Select State'}
                 </Text>
+                <Icon name="arrow-drop-down" size={24} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -1052,30 +2081,16 @@ const Cart = () => {
               <TouchableOpacity
                 style={[styles.pickerButton, !formData.state && styles.disabledPicker]}
                 onPress={() => {
-                  if (!formData.state) return;
-                  if (cities.length === 0) {
-                    Toast.show({
-                      type: 'info',
-                      text1: 'Loading',
-                      text2: 'Loading cities...',
-                    });
-                    return;
+                  if (formData.state) {
+                    setShowCityDropdown(true);
                   }
-                  
-                  Alert.alert(
-                    'Select City',
-                    '',
-                    cities.map(city => ({
-                      text: city,
-                      onPress: () => setFormData(prev => ({ ...prev, city }))
-                    })).concat([{ text: 'Cancel', style: 'cancel' }])
-                  );
                 }}
                 disabled={!formData.state}
               >
                 <Text style={formData.city ? styles.pickerText : styles.pickerPlaceholder}>
                   {formData.city || (formData.state ? 'Select City' : 'Select state first')}
                 </Text>
+                <Icon name="arrow-drop-down" size={24} color="#666" />
               </TouchableOpacity>
               {!formData.state && (
                 <Text style={styles.helperText}>Please select state first</Text>
@@ -1204,6 +2219,12 @@ const Cart = () => {
       const discount = item.discount || 0;
       const imageUrl = getProductImageUrl(item);
       
+      console.log(`Rendering cart item ${index}:`, {
+        name: item.name,
+        price: itemPrice,
+        imageUrl: imageUrl
+      });
+      
       return (
         <TouchableOpacity
           key={`${item._id}_${index}_${item.selectedVariant?.label || 'default'}`}
@@ -1261,8 +2282,9 @@ const Cart = () => {
             </View>
             <TouchableOpacity 
               style={styles.removeBtn}
-              onPress={(e) => handleRemoveItem(item._id, e)}
+              onPress={(e) => handleRemoveItem(item._id, item.name, e)}
             >
+
               <Text style={styles.removeBtnText}>Remove</Text>
             </TouchableOpacity>
           </View>
@@ -1284,31 +2306,42 @@ const Cart = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
+      {/* Clear Cart Modal */}
+      <ClearCartModal
+        visible={showClearCartModal}
+        onClose={() => setShowClearCartModal(false)}
+        onConfirm={confirmClearCart}
+      />
+      
+      {/* Remove Item Modal */}
+      <RemoveItemModal
+        visible={showRemoveItemModal}
+        onClose={() => {
+          setShowRemoveItemModal(false);
+          setItemToRemove(null);
+          setItemNameToRemove('');
+        }}
+        onConfirm={confirmRemoveItem}
+        itemName={itemNameToRemove}
+      />
+      
+      {/* Product Details Modal */}
+      {renderProductDetails()}
       
       {/* Processing Loader */}
       {renderProcessingLoader()}
       
+      {/* State Dropdown */}
+      {renderStateDropdown()}
+      
+      {/* City Dropdown */}
+      {renderCityDropdown()}
+      
+      {/* Address Modal */}
+      {renderAddressModal()}
+      
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>←</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.headerTitle}>Shopping Cart</Text>
-        
-        {cartItems.length > 0 && (
-          <TouchableOpacity 
-            style={styles.clearAllButton}
-            onPress={clearCart}
-          >
-            {/* <Text style={styles.clearAllText}>Clear All</Text> */}
-          </TouchableOpacity>
-        )}
-      </View>
+     
 
       {/* Login Prompt */}
       {!isAuthenticated && (
@@ -1327,7 +2360,7 @@ const Cart = () => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Your Items ({cartItems.length})</Text>
             {cartItems.length > 0 && (
-              <TouchableOpacity onPress={clearCart}>
+              <TouchableOpacity onPress={handleClearCart}>
                 <Text style={styles.clearCartText}>Clear Cart</Text>
               </TouchableOpacity>
             )}
@@ -1456,18 +2489,16 @@ const Cart = () => {
           </View>
         )}
       </ScrollView>
-
-      {/* Address Modal */}
-      {renderAddressModal()}
     </SafeAreaView>
   );
 };
 
-// Styles
+// Styles - Add Product Details Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f7f9',
+    paddingTop: 0,
   },
   loadingContainer: {
     flex: 1,
@@ -1481,11 +2512,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     elevation: 2,
@@ -1503,16 +2533,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   headerTitle: {
+    flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
   clearAllButton: {
-    padding: 4,
+    padding: 8,
   },
   clearAllText: {
     fontSize: 14,
-    color: '#ff4444',
+    color: '#d51c1c',
     fontWeight: '600',
   },
   loginPrompt: {
@@ -1683,6 +2715,7 @@ const styles = StyleSheet.create({
   },
   disabledBtn: {
     backgroundColor: '#f5f5f5',
+    opacity: 0.5,
   },
   quantityBtnText: {
     fontSize: 18,
@@ -1699,13 +2732,18 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   removeBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#FFF5F5',
+    borderRadius: 6,
+    gap: 4,
   },
   removeBtnText: {
     fontSize: 12,
     color: '#ff4444',
-    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   orderSummary: {
     backgroundColor: '#fff',
@@ -1903,6 +2941,433 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  
+  // Product Details Styles
+  productDetailsContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  detailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingTop: Platform.OS === 'ios' ? 8 : 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  detailsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+  },
+  headerButton: {
+    padding: 8,
+    position: 'relative',
+  },
+  cartBadgeModal: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF6B00',
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  cartBadgeTextModal: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  detailsContent: {
+    flex: 1,
+  },
+  imageGallery: {
+    height: 320,
+    backgroundColor: '#f8f9fa',
+  },
+  detailsImage: {
+    width: '100%',
+    height: '100%',
+  },
+  noImageContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
+  },
+  noImageText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#999',
+  },
+  detailsInfoContainer: {
+    padding: 16,
+  },
+  productHeaderDetails: {
+    marginBottom: 12,
+  },
+  productCategoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  productCategoryText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  detailsProductName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    lineHeight: 28,
+  },
+  ratingSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF9E6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginRight: 12,
+  },
+  ratingValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 4,
+    marginRight: 4,
+  },
+  ratingCount: {
+    fontSize: 12,
+    color: '#666',
+  },
+  deliveryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  deliveryText: {
+    fontSize: 12,
+    color: '#FF6B00',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  detailsPriceSection: {
+    marginBottom: 20,
+  },
+  priceMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  detailsPrice: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  detailsOriginalPrice: {
+    fontSize: 18,
+    color: '#999',
+    marginLeft: 12,
+    textDecorationLine: 'line-through',
+  },
+  detailsDiscountBadge: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginLeft: 12,
+  },
+  detailsDiscountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  gstBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  gstText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  finalPriceBadge: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  finalPriceText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
+  quantitySection: {
+    marginBottom: 24,
+  },
+  quantityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  quantityScroll: {
+    flexGrow: 0,
+    marginBottom: 8,
+  },
+  quantityOption: {
+    width: 100,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#f5f5f5',
+    marginRight: 12,
+    alignItems: 'center',
+  },
+  quantityOptionSelected: {
+    backgroundColor: '#FF6B00',
+  },
+  quantityOptionDisabled: {
+    backgroundColor: '#f5f5f5',
+    opacity: 0.5,
+  },
+  quantityOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  quantityOptionTextSelected: {
+    color: '#fff',
+  },
+  quantityOptionTextDisabled: {
+    color: '#999',
+  },
+  quantityOptionPrice: {
+    fontSize: 12,
+    color: '#666',
+  },
+  quantityOptionPriceSelected: {
+    color: '#fff',
+  },
+  variantDiscountText: {
+    fontSize: 10,
+    color: '#4CAF50',
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  outOfStockLabel: {
+    fontSize: 10,
+    color: '#F44336',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+  singleQuantity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  singleQuantityLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  singleQuantityValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  outOfStockText: {
+    fontSize: 14,
+    color: '#F44336',
+    fontWeight: '600',
+  },
+  detailsSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  sectionContent: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 22,
+  },
+  featuresSection: {
+    marginBottom: 24,
+  },
+  featuresGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  featureItem: {
+    width: '50%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 6,
+  },
+  featureText: {
+    fontSize: 14,
+    color: '#333',
+    marginLeft: 8,
+  },
+  specsSection: {
+    marginBottom: 24,
+  },
+  specsGrid: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+  },
+  specItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  specItemLast: {
+    borderBottomWidth: 0,
+  },
+  specLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  specValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  priceBreakdownSection: {
+    marginBottom: 24,
+  },
+  priceBreakdownGrid: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 12,
+    padding: 16,
+  },
+  priceBreakdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  priceBreakdownLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  priceBreakdownValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#333',
+  },
+  priceBreakdownTotal: {
+    borderTopWidth: 2,
+    borderTopColor: '#FF6B00',
+    borderBottomWidth: 0,
+    marginTop: 8,
+    paddingTop: 12,
+  },
+  priceBreakdownTotalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF6B00',
+  },
+  savingsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    backgroundColor: '#FFF3E0',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  savingsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#E65100',
+  },
+  savingsValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#E65100',
+  },
+  detailsFooter: {
+    flexDirection: 'row',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  addToCartButtonLarge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF6B00',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+  },
+  addToCartButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  goToCartButton: {
+    backgroundColor: '#FF6B00',
+  },
+  addToCartTextLarge: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  addToCartPrice: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
+    opacity: 0.9,
+  },
+  
   // Processing Loader
   processingOverlay: {
     flex: 1,
@@ -1959,6 +3424,66 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  
+  // Dropdown Styles
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  dropdownLoading: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  dropdownLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  dropdownScroll: {
+    maxHeight: 400,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownEmpty: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  dropdownEmptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+  },
+  
   // Modal Styles
   modalOverlay: {
     flex: 1,
@@ -2040,6 +3565,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   pickerText: {
     fontSize: 16,
@@ -2150,6 +3678,240 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Clear Cart Modal Styles
+  clearModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    position: 'absolute',
+    bottom: 0,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  clearModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  clearModalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearModalCloseBtn: {
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+  },
+  clearModalContent: {
+    marginBottom: 24,
+  },
+  clearModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  clearModalDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  clearModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  clearModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  clearModalCancelText: {
+    color: '#495057',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  clearModalConfirmBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  clearModalGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  clearModalBtnIcon: {
+    marginRight: 8,
+  },
+  clearModalConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Remove Item Modal Styles
+  removeModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    position: 'absolute',
+    bottom: 0,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  removeModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  removeModalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeModalCloseBtn: {
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+  },
+  removeModalContent: {
+    marginBottom: 24,
+  },
+  removeModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  removeModalDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  removeModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  removeModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  removeModalCancelText: {
+    color: '#495057',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  removeModalConfirmBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  removeModalGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  removeModalBtnIcon: {
+    marginRight: 8,
+  },
+  removeModalConfirmText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

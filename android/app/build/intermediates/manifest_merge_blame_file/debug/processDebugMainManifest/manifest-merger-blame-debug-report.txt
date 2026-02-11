@@ -1,8 +1,8 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.cupid_cakes"
-4    android:versionCode="6"
-5    android:versionName="1.4" >
+4    android:versionCode="9"
+5    android:versionName="1.7" >
 6
 7    <uses-sdk
 8        android:minSdkVersion="24"
@@ -33,59 +33,59 @@
 22-->[com.facebook.react:react-android:0.78.2] /Users/himanshu/.gradle/caches/8.12/transforms/f0cbb2cbf3730d81e18c2b2ed9b3eee6/transformed/react-android-0.78.2-debug/AndroidManifest.xml:16:22-75
 23
 24    <queries>
-24-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:10:5-39:15
+24-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:10:5-39:15
 25        <intent>
-25-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:11:9-17:18
+25-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:11:9-17:18
 26            <action android:name="android.intent.action.VIEW" />
-26-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:12:13-65
-26-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:12:21-62
+26-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:13-65
+26-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:21-62
 27
 28            <data
-28-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:14:13-16:38
+28-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:14:13-16:38
 29                android:mimeType="*/*"
-29-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:15:17-39
+29-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:15:17-39
 30                android:scheme="*" />
-30-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:16:17-35
+30-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:16:17-35
 31        </intent>
 32        <intent>
-32-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:18:9-27:18
+32-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:18:9-27:18
 33            <action android:name="android.intent.action.VIEW" />
-33-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:12:13-65
-33-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:12:21-62
+33-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:13-65
+33-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:21-62
 34
 35            <category android:name="android.intent.category.BROWSABLE" />
-35-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:21:13-74
-35-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:21:23-71
+35-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:21:13-74
+35-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:21:23-71
 36
 37            <data
-37-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:14:13-16:38
+37-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:14:13-16:38
 38                android:host="pay"
 39                android:mimeType="*/*"
-39-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:15:17-39
+39-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:15:17-39
 40                android:scheme="upi" />
-40-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:16:17-35
+40-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:16:17-35
 41        </intent>
 42        <intent>
-42-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:28:9-30:18
+42-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:28:9-30:18
 43            <action android:name="android.intent.action.MAIN" />
 43-->/Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:23:13-65
 43-->/Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:23:21-62
 44        </intent>
 45        <intent>
-45-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:31:9-35:18
+45-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:31:9-35:18
 46            <action android:name="android.intent.action.SEND" />
-46-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:32:13-65
-46-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:32:21-62
+46-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:32:13-65
+46-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:32:21-62
 47
 48            <data android:mimeType="*/*" />
-48-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:14:13-16:38
-48-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:15:17-39
+48-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:14:13-16:38
+48-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:15:17-39
 49        </intent>
 50        <intent>
-50-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:36:9-38:18
+50-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:36:9-38:18
 51            <action android:name="rzp.device_token.share" />
-51-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:37:13-61
-51-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:37:21-58
+51-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:37:13-61
+51-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:37:21-58
 52        </intent>
 53    </queries> <!-- Include required permissions for Google Maps API to run. -->
 54    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -110,8 +110,8 @@
 64-->[androidx.core:core:1.13.1] /Users/himanshu/.gradle/caches/8.12/transforms/46363a369f1a282643955c3f201a7c04/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
 64-->[androidx.core:core:1.13.1] /Users/himanshu/.gradle/caches/8.12/transforms/46363a369f1a282643955c3f201a7c04/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
 65    <uses-permission android:name="android.permission.READ_BASIC_PHONE_STATE" />
-65-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:10:5-81
-65-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:10:22-78
+65-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:10:5-81
+65-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:10:22-78
 66
 67    <application
 67-->/Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:7:5-27:19
@@ -167,11 +167,11 @@
 94            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
 94-->[:react-native-razorpay] /Users/himanshu/Desktop/cupid_cakes/node_modules/react-native-razorpay/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:13-83
 95            android:exported="false"
-95-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:45:13-37
+95-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:45:13-37
 96            android:theme="@style/CheckoutTheme" >
-96-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:46:13-49
+96-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:46:13-49
 97            <intent-filter>
-97-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:47:13-49:29
+97-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:47:13-49:29
 98                <action android:name="android.intent.action.MAIN" />
 98-->/Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:23:13-65
 98-->/Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:23:21-62
@@ -185,19 +185,19 @@
 103-->[com.facebook.react:react-android:0.78.2] /Users/himanshu/.gradle/caches/8.12/transforms/f0cbb2cbf3730d81e18c2b2ed9b3eee6/transformed/react-android-0.78.2-debug/AndroidManifest.xml:21:13-37
 104
 105        <provider
-105-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:52:9-60:20
+105-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:52:9-60:20
 106            android:name="androidx.startup.InitializationProvider"
-106-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:53:13-67
+106-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:53:13-67
 107            android:authorities="com.cupid_cakes.androidx-startup"
-107-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:54:13-68
+107-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:54:13-68
 108            android:exported="false" >
-108-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:55:13-37
+108-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:55:13-37
 109            <meta-data
-109-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:57:13-59:52
+109-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:57:13-59:52
 110                android:name="com.razorpay.RazorpayInitializer"
-110-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:58:17-64
+110-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:58:17-64
 111                android:value="androidx.startup" />
-111-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:59:17-49
+111-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:59:17-49
 112            <meta-data
 112-->[androidx.emoji2:emoji2:1.2.0] /Users/himanshu/.gradle/caches/8.12/transforms/5c75f2cb06ea6def2a8cbe64ff4e57fb/transformed/emoji2-1.2.0/AndroidManifest.xml:29:13-31:52
 113                android:name="androidx.emoji2.text.EmojiCompatInitializer"
@@ -219,13 +219,13 @@
 121        </provider>
 122
 123        <activity
-123-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:62:9-65:75
+123-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:62:9-65:75
 124            android:name="com.razorpay.MagicXActivity"
-124-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:63:13-55
+124-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:63:13-55
 125            android:exported="false"
-125-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:64:13-37
+125-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:64:13-37
 126            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-126-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:65:13-72
+126-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:65:13-72
 127        <activity
 127-->[com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:23:9-27:75
 128            android:name="com.google.android.gms.auth.api.signin.internal.SignInHubActivity"
@@ -319,36 +319,36 @@
 176-->[com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:14:13-34
 177
 178        <activity
-178-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:13:9-30:20
+178-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:13:9-30:20
 179            android:name="com.razorpay.DeeplinkActivity"
-179-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:14:13-57
+179-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:14:13-57
 180            android:exported="true"
-180-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:15:13-36
+180-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:15:13-36
 181            android:theme="@style/CheckoutTheme" >
-181-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:16:13-49
+181-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:16:13-49
 182            <intent-filter>
-182-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:17:13-29:29
+182-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:17:13-29:29
 183                <action android:name="android.intent.action.VIEW" />
-183-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:12:13-65
-183-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:12:21-62
+183-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:13-65
+183-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:21-62
 184
 185                <category android:name="android.intent.category.DEFAULT" />
-185-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:20:17-76
-185-->[com.razorpay:core:1.0.3] /Users/himanshu/.gradle/caches/8.12/transforms/b44b2fcd6114dc58219ffd3c4b52ccad/transformed/core-1.0.3/AndroidManifest.xml:20:27-73
+185-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:20:17-76
+185-->[com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:20:27-73
 186                <category android:name="android.intent.category.BROWSABLE" />
-186-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:21:13-74
-186-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:21:23-71
+186-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:21:13-74
+186-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:21:23-71
 187
 188                <data
-188-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:14:13-16:38
+188-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:14:13-16:38
 189                    android:host="com.cupid_cakes"
 190                    android:scheme="razorpay" />
-190-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:16:17-35
+190-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:16:17-35
 191                <data
-191-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:14:13-16:38
+191-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:14:13-16:38
 192                    android:host="pg-router.dev.razorpay.in"
 193                    android:scheme="https" />
-193-->[com.razorpay:standard-core:1.7.3] /Users/himanshu/.gradle/caches/8.12/transforms/1d37ff4ef5944900125a87db228787a3/transformed/standard-core-1.7.3/AndroidManifest.xml:16:17-35
+193-->[com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:16:17-35
 194            </intent-filter>
 195        </activity>
 196    </application>
