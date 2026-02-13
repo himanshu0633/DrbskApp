@@ -23,7 +23,7 @@ MERGED from [androidx.appcompat:appcompat-resources:1.6.1] /Users/himanshu/.grad
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /Users/himanshu/.gradle/caches/8.12/transforms/3f2683301290cf09fd24957b48a1ea1b/transformed/constraintlayout-2.0.1/AndroidManifest.xml:2:1-11:12
 MERGED from [androidx.appcompat:appcompat:1.6.1] /Users/himanshu/.gradle/caches/8.12/transforms/05c7a28e28d577b95672152c3f672cf1/transformed/appcompat-1.6.1/AndroidManifest.xml:17:1-22:12
 MERGED from [com.razorpay:checkout:1.6.41] /Users/himanshu/.gradle/caches/8.12/transforms/9304679e7757a0f4dd7a64f6f8731849/transformed/checkout-1.6.41/AndroidManifest.xml:2:1-7:12
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:2:1-68:12
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:2:1-71:12
 MERGED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:17:1-40:12
 MERGED from [com.google.android.gms:play-services-wallet:18.1.3] /Users/himanshu/.gradle/caches/8.12/transforms/9fc1db2c7c1bcdeaa48b72ca434f5628/transformed/play-services-wallet-18.1.3/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] /Users/himanshu/.gradle/caches/8.12/transforms/2708699290d4cba078792d81c41b5e17/transformed/viewpager2-1.0.0/AndroidManifest.xml:17:1-24:12
@@ -101,7 +101,7 @@ MERGED from [androidx.arch.core:core-runtime:2.2.0] /Users/himanshu/.gradle/cach
 MERGED from [androidx.annotation:annotation-experimental:1.4.0] /Users/himanshu/.gradle/caches/8.12/transforms/091e7f0a65caba6311088f5ec1f51f52/transformed/annotation-experimental-1.4.0/AndroidManifest.xml:2:1-7:12
 MERGED from [com.facebook.fbjni:fbjni:0.7.0] /Users/himanshu/.gradle/caches/8.12/transforms/bbbd7faada6db350ac59925f93ab342e/transformed/fbjni-0.7.0/AndroidManifest.xml:2:1-7:12
 MERGED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:2:1-17:12
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:2:1-33:12
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:2:1-33:12
 	package
 		INJECTED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/debug/AndroidManifest.xml
 	android:versionName
@@ -114,12 +114,12 @@ MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transf
 		ADDED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:1:11-69
 uses-permission#android.permission.INTERNET
 ADDED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:3:5-67
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:8:5-67
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:8:5-67
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:8:5-67
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:8:5-67
 MERGED from [com.google.android.gms:play-services-maps:17.0.0] /Users/himanshu/.gradle/caches/8.12/transforms/df6ba83754ffea79c5869c6e55011a90/transformed/play-services-maps-17.0.0/AndroidManifest.xml:24:5-67
 MERGED from [com.google.android.gms:play-services-maps:17.0.0] /Users/himanshu/.gradle/caches/8.12/transforms/df6ba83754ffea79c5869c6e55011a90/transformed/play-services-maps-17.0.0/AndroidManifest.xml:24:5-67
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:7:5-67
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:7:5-67
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:7:5-67
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:7:5-67
 	android:name
 		ADDED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/main/AndroidManifest.xml:3:22-64
 uses-permission#android.permission.ACCESS_COARSE_LOCATION
@@ -143,8 +143,8 @@ MERGED from [com.google.android.material:material:1.6.1] /Users/himanshu/.gradle
 MERGED from [com.google.android.material:material:1.6.1] /Users/himanshu/.gradle/caches/8.12/transforms/938c56a13f98ce28c237369f349cafdc/transformed/material-1.6.1/AndroidManifest.xml:24:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /Users/himanshu/.gradle/caches/8.12/transforms/3f2683301290cf09fd24957b48a1ea1b/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] /Users/himanshu/.gradle/caches/8.12/transforms/3f2683301290cf09fd24957b48a1ea1b/transformed/constraintlayout-2.0.1/AndroidManifest.xml:9:5-20
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:41:5-66:19
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:41:5-66:19
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:41:5-69:19
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:41:5-69:19
 MERGED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:22:5-38:19
 MERGED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:22:5-38:19
 MERGED from [com.google.android.gms:play-services-location:18.0.0] /Users/himanshu/.gradle/caches/8.12/transforms/265b34d8168f666a41c3729ac2e462d4/transformed/play-services-location-18.0.0/AndroidManifest.xml:7:5-20
@@ -177,8 +177,8 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Users/hima
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Users/himanshu/.gradle/caches/8.12/transforms/984950335bc94870fcd23e228bc16008/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
 MERGED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:11:5-15:19
 MERGED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:11:5-15:19
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:12:5-31:19
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:12:5-31:19
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:12:5-31:19
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:12:5-31:19
 	android:extractNativeLibs
 		INJECTED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/debug/AndroidManifest.xml
 	android:appComponentFactory
@@ -280,8 +280,8 @@ MERGED from [androidx.appcompat:appcompat:1.6.1] /Users/himanshu/.gradle/caches/
 MERGED from [androidx.appcompat:appcompat:1.6.1] /Users/himanshu/.gradle/caches/8.12/transforms/05c7a28e28d577b95672152c3f672cf1/transformed/appcompat-1.6.1/AndroidManifest.xml:20:5-44
 MERGED from [com.razorpay:checkout:1.6.41] /Users/himanshu/.gradle/caches/8.12/transforms/9304679e7757a0f4dd7a64f6f8731849/transformed/checkout-1.6.41/AndroidManifest.xml:5:5-44
 MERGED from [com.razorpay:checkout:1.6.41] /Users/himanshu/.gradle/caches/8.12/transforms/9304679e7757a0f4dd7a64f6f8731849/transformed/checkout-1.6.41/AndroidManifest.xml:5:5-44
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:6:5-44
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:6:5-44
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:6:5-44
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:6:5-44
 MERGED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:20:5-44
 MERGED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:20:5-44
 MERGED from [com.google.android.gms:play-services-wallet:18.1.3] /Users/himanshu/.gradle/caches/8.12/transforms/9fc1db2c7c1bcdeaa48b72ca434f5628/transformed/play-services-wallet-18.1.3/AndroidManifest.xml:20:5-44
@@ -436,22 +436,22 @@ MERGED from [com.facebook.fbjni:fbjni:0.7.0] /Users/himanshu/.gradle/caches/8.12
 MERGED from [com.facebook.fbjni:fbjni:0.7.0] /Users/himanshu/.gradle/caches/8.12/transforms/bbbd7faada6db350ac59925f93ab342e/transformed/fbjni-0.7.0/AndroidManifest.xml:5:5-44
 MERGED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:7:5-9:41
 MERGED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:7:5-9:41
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:5:5-44
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:5:5-44
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:5:5-44
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:5:5-44
 	android:targetSdkVersion
 		INJECTED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/debug/AndroidManifest.xml
 	android:minSdkVersion
 		INJECTED from /Users/himanshu/Desktop/cupid_cakes/android/app/src/debug/AndroidManifest.xml
 activity#com.razorpay.CheckoutActivity
 ADDED from [:react-native-razorpay] /Users/himanshu/Desktop/cupid_cakes/node_modules/react-native-razorpay/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:8:9-10:86
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:42:9-50:20
-MERGED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:42:9-50:20
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:42:9-50:20
+MERGED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:42:9-50:20
 	android:exported
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:45:13-37
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:45:13-37
 	android:configChanges
 		ADDED from [:react-native-razorpay] /Users/himanshu/Desktop/cupid_cakes/node_modules/react-native-razorpay/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:10:13-83
 	android:theme
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:46:13-49
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:46:13-49
 	android:name
 		ADDED from [:react-native-razorpay] /Users/himanshu/Desktop/cupid_cakes/node_modules/react-native-razorpay/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:9:13-57
 uses-permission#android.permission.SYSTEM_ALERT_WINDOW
@@ -465,43 +465,43 @@ ADDED from [com.facebook.react:react-android:0.78.2] /Users/himanshu/.gradle/cac
 	android:name
 		ADDED from [com.facebook.react:react-android:0.78.2] /Users/himanshu/.gradle/caches/8.12/transforms/f0cbb2cbf3730d81e18c2b2ed9b3eee6/transformed/react-android-0.78.2-debug/AndroidManifest.xml:20:13-77
 queries
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:10:5-39:15
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:10:5-39:15
 intent#action:name:android.intent.action.VIEW+data:mimeType:*/*+data:scheme:*
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:11:9-17:18
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:11:9-17:18
 action#android.intent.action.VIEW
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:13-65
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:12:13-65
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:12:21-62
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:12:21-62
 data
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:14:13-16:38
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:14:13-16:38
 	android:scheme
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:16:17-35
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:16:17-35
 	android:mimeType
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:15:17-39
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:15:17-39
 intent#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+data:host:pay+data:mimeType:*/*+data:scheme:upi
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:18:9-27:18
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:18:9-27:18
 category#android.intent.category.BROWSABLE
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:21:13-74
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:21:13-74
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:21:23-71
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:21:23-71
 intent#action:name:android.intent.action.MAIN
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:28:9-30:18
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:28:9-30:18
 intent#action:name:android.intent.action.SEND+data:mimeType:*/*
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:31:9-35:18
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:31:9-35:18
 action#android.intent.action.SEND
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:32:13-65
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:32:13-65
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:32:21-62
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:32:21-62
 intent#action:name:rzp.device_token.share
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:36:9-38:18
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:36:9-38:18
 action#rzp.device_token.share
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:37:13-61
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:37:13-61
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:37:21-58
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:37:21-58
 intent-filter#action:name:android.intent.action.MAIN
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:47:13-49:29
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:47:13-49:29
 provider#androidx.startup.InitializationProvider
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:52:9-60:20
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:52:9-63:20
 MERGED from [androidx.emoji2:emoji2:1.2.0] /Users/himanshu/.gradle/caches/8.12/transforms/5c75f2cb06ea6def2a8cbe64ff4e57fb/transformed/emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
 MERGED from [androidx.emoji2:emoji2:1.2.0] /Users/himanshu/.gradle/caches/8.12/transforms/5c75f2cb06ea6def2a8cbe64ff4e57fb/transformed/emoji2-1.2.0/AndroidManifest.xml:24:9-32:20
 MERGED from [androidx.lifecycle:lifecycle-process:2.6.2] /Users/himanshu/.gradle/caches/8.12/transforms/0c2c422405b168878d72bf26eaac442c/transformed/lifecycle-process-2.6.2/AndroidManifest.xml:24:9-32:20
@@ -511,27 +511,33 @@ MERGED from [androidx.profileinstaller:profileinstaller:1.3.0] /Users/himanshu/.
 MERGED from [androidx.startup:startup-runtime:1.1.1] /Users/himanshu/.gradle/caches/8.12/transforms/101e817f563dbbb7c83b62d7fa13253d/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 MERGED from [androidx.startup:startup-runtime:1.1.1] /Users/himanshu/.gradle/caches/8.12/transforms/101e817f563dbbb7c83b62d7fa13253d/transformed/startup-runtime-1.1.1/AndroidManifest.xml:26:9-30:34
 	tools:node
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:56:13-31
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:56:13-31
 	android:authorities
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:54:13-68
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:54:13-68
 	android:exported
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:55:13-37
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:55:13-37
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:53:13-67
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:53:13-67
 meta-data#com.razorpay.RazorpayInitializer
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:57:13-59:52
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:57:13-59:52
 	android:value
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:59:17-49
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:59:17-49
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:58:17-64
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:58:17-64
+meta-data#com.razorpay.CoreInitializer
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:60:13-62:52
+	android:value
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:62:17-49
+	android:name
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:61:17-60
 activity#com.razorpay.MagicXActivity
-ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:62:9-65:75
+ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:65:9-68:75
 	android:exported
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:64:13-37
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:67:13-37
 	android:theme
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:65:13-72
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:68:13-72
 	android:name
-		ADDED from [com.razorpay:standard-core:1.7.6] /Users/himanshu/.gradle/caches/8.12/transforms/df07b08ca68aa37e49f0761299b198da/transformed/standard-core-1.7.6/AndroidManifest.xml:63:13-55
+		ADDED from [com.razorpay:standard-core:1.7.7] /Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/AndroidManifest.xml:66:13-55
 activity#com.google.android.gms.auth.api.signin.internal.SignInHubActivity
 ADDED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:23:9-27:75
 	android:excludeFromRecents
@@ -554,8 +560,8 @@ ADDED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.g
 		ADDED from [com.google.android.gms:play-services-auth:21.1.0] /Users/himanshu/.gradle/caches/8.12/transforms/7b23e16c7511e53cb6a75a8b17194660/transformed/play-services-auth-21.1.0/AndroidManifest.xml:34:13-89
 uses-permission#android.permission.ACCESS_NETWORK_STATE
 ADDED from [com.google.android.gms:play-services-maps:17.0.0] /Users/himanshu/.gradle/caches/8.12/transforms/df6ba83754ffea79c5869c6e55011a90/transformed/play-services-maps-17.0.0/AndroidManifest.xml:23:5-79
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:8:5-79
-MERGED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:8:5-79
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:8:5-79
+MERGED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:8:5-79
 	android:name
 		ADDED from [com.google.android.gms:play-services-maps:17.0.0] /Users/himanshu/.gradle/caches/8.12/transforms/df6ba83754ffea79c5869c6e55011a90/transformed/play-services-maps-17.0.0/AndroidManifest.xml:23:22-76
 uses-feature#0x00020000
@@ -665,22 +671,22 @@ ADDED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/cache
 	android:name
 		ADDED from [com.facebook.soloader:soloader:0.12.1] /Users/himanshu/.gradle/caches/8.12/transforms/d1e282926af10eebb698a4b49dfb3b89/transformed/soloader-0.12.1/AndroidManifest.xml:13:13-57
 uses-permission#android.permission.READ_BASIC_PHONE_STATE
-ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:10:5-81
+ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:10:5-81
 	android:name
-		ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:10:22-78
+		ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:10:22-78
 activity#com.razorpay.DeeplinkActivity
-ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:13:9-30:20
+ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:13:9-30:20
 	android:exported
-		ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:15:13-36
+		ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:15:13-36
 	android:theme
-		ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:16:13-49
+		ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:16:13-49
 	android:name
-		ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:14:13-57
+		ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:14:13-57
 intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:${applicationId}+data:host:pg-router.dev.razorpay.in+data:scheme:https+data:scheme:razorpay
-ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:17:13-29:29
+ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:17:13-29:29
 intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:com.cupid_cakes+data:host:pg-router.dev.razorpay.in+data:scheme:https+data:scheme:razorpay
-ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:17:13-29:29
+ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:17:13-29:29
 category#android.intent.category.DEFAULT
-ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:20:17-76
+ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:20:17-76
 	android:name
-		ADDED from [com.razorpay:core:1.0.4] /Users/himanshu/.gradle/caches/8.12/transforms/aaf2df5567de70d6e99aba772441a526/transformed/core-1.0.4/AndroidManifest.xml:20:27-73
+		ADDED from [com.razorpay:core:1.0.6] /Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/AndroidManifest.xml:20:27-73
