@@ -57,6 +57,7 @@ import {
   MessageCircle,
   Settings,
   Bone,
+  AlertCircle,
   ArrowLeft,
   CheckCircle,
   Truck,
@@ -78,6 +79,9 @@ const { width, height } = Dimensions.get('window');
 
 function toNum(x, fallback = 0) {
   if (x === null || x === undefined || x === '') return fallback;
+  // If it's already a number, return it
+  if (typeof x === 'number') return x;
+  // If it's a string, clean it and parse
   const n = parseFloat(String(x).toString().replace(/[^0-9.\-]/g, ''));
   return Number.isFinite(n) ? n : fallback;
 }
@@ -91,69 +95,75 @@ function parseVariants(raw) {
     
     let parsed = [];
 
+    // Handle your specific data structure: quantity is an array containing an array
     if (Array.isArray(raw) && raw.length > 0) {
-      // Case 1: Array में JSON string है
-      if (typeof raw[0] === 'string') {
-        console.log('Case 1: Array with string');
-        try {
-          // First try to parse as JSON
-          parsed = JSON.parse(raw[0]);
-          console.log('First parse result:', parsed);
-          console.log('Type after first parse:', typeof parsed);
-          
-          // If parsed is still a string, try parsing again
-          if (typeof parsed === 'string') {
-            console.log('Parsed is still string, parsing again');
-            parsed = JSON.parse(parsed);
-            console.log('Second parse result:', parsed);
-          }
-        } catch (innerError) {
-          console.warn('Failed to parse JSON string:', innerError);
+      // Check if first element is an array (your case)
+      if (Array.isArray(raw[0]) && raw[0].length > 0) {
+        console.log('Case: Nested array structure [ [ {...} ] ]');
+        const innerArray = raw[0];
+        if (typeof innerArray[0] === 'object') {
+          parsed = innerArray;
         }
       } 
-      // Case 2: Direct array of objects है
+      // Check if first element is a string that needs parsing
+      else if (typeof raw[0] === 'string') {
+        console.log('Case: Array with JSON string');
+        try {
+          const parsedString = JSON.parse(raw[0]);
+          if (Array.isArray(parsedString)) {
+            parsed = parsedString;
+          } else if (typeof parsedString === 'object') {
+            parsed = [parsedString];
+          }
+        } catch (e) {
+          console.warn('Failed to parse stringified quantity:', e);
+        }
+      }
+      // Check if first element is an object (direct array of variants)
       else if (typeof raw[0] === 'object') {
-        console.log('Case 2: Direct array of objects');
+        console.log('Case: Direct array of objects');
         parsed = raw;
       }
     } 
-    // Case 3: Direct JSON string है
+    // Handle if raw is a string
     else if (typeof raw === 'string') {
-      console.log('Case 3: Direct JSON string');
-      parsed = JSON.parse(raw);
+      console.log('Case: Direct JSON string');
+      try {
+        const parsedJSON = JSON.parse(raw);
+        if (Array.isArray(parsedJSON)) {
+          parsed = parsedJSON;
+        } else if (typeof parsedJSON === 'object') {
+          parsed = [parsedJSON];
+        }
+      } catch (e) {
+        console.warn('Failed to parse string quantity:', e);
+      }
     }
-    // Case 4: Direct array है
-    else if (Array.isArray(raw)) {
-      console.log('Case 4: Direct array');
-      parsed = raw;
+    // Handle if raw is already an object
+    else if (typeof raw === 'object' && raw !== null) {
+      console.log('Case: Single object');
+      parsed = [raw];
     }
 
     console.log('Parsed after initial processing:', parsed);
 
-    // Ensure parsed is an array
-    if (!Array.isArray(parsed)) {
-      console.log('Parsed is not array, converting to array');
-      parsed = [parsed];
-    }
-
-    // Filter out null/undefined and map to clean objects
-    const result = (parsed || [])
+    // Map each variant to ensure proper types
+    const mappedVariants = (parsed || [])
       .filter(v => v != null)
       .map(v => ({
-        label: String(v.label || '').trim() || 'Standard Pack',
+        label: (v.label || '').trim() || 'Standard Pack',
         mrp: toNum(v.mrp),
         discount: toNum(v.discount),
         gst: toNum(v.gst),
         retail_price: toNum(v.retail_price),
         final_price: toNum(v.final_price),
-        in_stock: String(v.in_stock || 'yes').toLowerCase() === 'yes',
+        in_stock: String(v.in_stock || '').toLowerCase() === 'yes' || v.in_stock === true,
       }));
-    
-    console.log('Final parsed variants:', result);
-    return result;
-    
+
+    console.log('Final mapped variants:', mappedVariants);
+    return mappedVariants;
   } catch (e) {
-    console.warn('Failed to parse variants from quantity:', e, 'Raw:', raw);
+    console.warn('Failed to parse variants from quantity:', e);
     return [];
   }
 }
@@ -185,7 +195,7 @@ function getProductPrices(variants) {
   const result = {
     retail_price: toNum(firstVariant.retail_price),
     consumer_price: consumerPrice,
-    discount: toNum(firstVariant.discount), // Direct from variant
+    discount: toNum(firstVariant.discount),
     gst: toNum(firstVariant.gst),
     mrp: toNum(firstVariant.mrp)
   };
@@ -194,92 +204,30 @@ function getProductPrices(variants) {
   return result;
 }
 
-/** Build a normalized product with price/originalPrice/discountPercent & variants */
-function normalizeProduct(p) {
-  console.log('=== NORMALIZE PRODUCT START ===');
-  console.log('Product name:', p.name);
-  console.log('Product ID:', p._id);
+/** Calculate discount percentage from variant data */
+function calculateDiscountPercent(variant) {
+  if (!variant) return 0;
   
-  const variants = parseVariants(p.quantity);
-  console.log('Parsed variants:', variants);
+  const mrp = toNum(variant.mrp);
+  const finalPrice = toNum(variant.final_price || variant.retail_price);
   
-  // Get product level prices from variants
-  const productPrices = getProductPrices(variants);
-  console.log('Product prices:', productPrices);
-  
-  // Calculate display prices
-  let price = 0;
-  let originalPrice = 0;
-  
-  if (variants.length > 0) {
-    console.log('Variants found, calculating display prices');
-    // Find variant with lowest final_price for display
-    const minVar = variants.reduce((acc, v) => {
-      const vPrice = v.final_price || 0;
-      const aPrice = acc.final_price || 0;
-      return vPrice < aPrice ? v : acc;
-    }, variants[0]);
-
-    console.log('Min variant for price:', minVar);
-    
-    price = toNum(minVar.final_price);
-    originalPrice = toNum(minVar.mrp);
-    
-    console.log('Price from minVar.final_price:', price);
-    console.log('OriginalPrice from minVar.mrp:', originalPrice);
-    
-    // If final_price is not available, use retail_price
-    if (price === 0) {
-      price = toNum(minVar.retail_price);
-      console.log('Price after fallback to retail_price:', price);
-    }
-    
-    // If mrp is not available, use retail_price as original price
-    if (originalPrice === 0) {
-      originalPrice = toNum(minVar.retail_price);
-      console.log('OriginalPrice after fallback to retail_price:', originalPrice);
-    }
-  } else {
-    console.log('No variants, using product level prices');
-    price = productPrices.consumer_price || productPrices.retail_price || 0;
-    originalPrice = productPrices.mrp || productPrices.retail_price || 0;
+  // If discount is directly provided, use it
+  if (variant.discount > 0) {
+    return Math.round(toNum(variant.discount));
   }
   
-  // Use discount directly from variant (NO CALCULATION)
-  const discountPercent = productPrices.discount || 0;
+  // Calculate discount from MRP and final price as fallback
+  if (mrp > 0 && finalPrice > 0 && mrp > finalPrice) {
+    return Math.round(((mrp - finalPrice) / mrp) * 100);
+  }
   
-  console.log('Discount from variant (no calculation):', discountPercent, '%');
-
-  const result = {
-    ...p,
-    price,
-    originalPrice,
-    discountPercent, // Direct from variant
-    variants,
-    // Add product level prices from variants
-    retail_price: productPrices.retail_price,
-    consumer_price: productPrices.consumer_price,
-    discount_value: productPrices.discount,
-    gst: productPrices.gst,
-    mrp: productPrices.mrp
-  };
-  
-  console.log('=== NORMALIZE PRODUCT END ===');
-  console.log('Final normalized product:', {
-    name: result.name,
-    price: result.price,
-    originalPrice: result.originalPrice,
-    discountPercent: result.discountPercent,
-    variantCount: result.variants?.length
-  });
-  
-  return result;
+  return 0;
 }
 
 /** Get the display price for a product based on a selected variant label */
 function getDisplayPrice(product, selectedLabel) {
   console.log('=== GET DISPLAY PRICE ===');
-  console.log('Product:', product.name);
+  console.log('Product:', product?.name);
   console.log('Selected label:', selectedLabel);
   
   if (!product?.variants?.length) {
@@ -315,6 +263,106 @@ function getDisplayPrice(product, selectedLabel) {
 function getVariantDetails(product, selectedLabel) {
   if (!product?.variants?.length || !selectedLabel) return null;
   return product.variants.find(x => x.label === selectedLabel);
+}
+
+/** Get the original price (MRP) for display */
+function getOriginalPrice(product, selectedLabel) {
+  if (!product?.variants?.length) return toNum(product?.mrp || 0);
+  
+  const v = product.variants.find(x => x.label === selectedLabel);
+  if (!v) return toNum(product?.mrp || 0);
+  
+  return toNum(v.mrp || 0);
+}
+
+/** Build a normalized product with price/originalPrice/discountPercent & variants */
+function normalizeProduct(p) {
+  console.log('=== NORMALIZE PRODUCT START ===');
+  console.log('Product name:', p?.name);
+  console.log('Product ID:', p?._id);
+  
+  if (!p) return p;
+  
+  const variants = parseVariants(p.quantity);
+  console.log('Parsed variants:', variants);
+  
+  // Get product level prices from variants
+  const productPrices = getProductPrices(variants);
+  console.log('Product prices:', productPrices);
+  
+  // Calculate display prices
+  let price = 0;
+  let originalPrice = 0;
+  let discountPercent = 0;
+  
+  // Use product-level prices as fallback
+  const productRetailPrice = toNum(p.retail_price);
+  const productConsumerPrice = toNum(p.consumer_price);
+  const productMrp = toNum(p.mrp);
+  const productDiscount = toNum(p.discount);
+  
+  if (variants.length > 0) {
+    console.log('Variants found, calculating display prices');
+    // Find variant with lowest final_price for display
+    const minVar = variants.reduce((acc, v) => {
+      const vPrice = v.final_price || v.retail_price || 0;
+      const aPrice = acc.final_price || acc.retail_price || 0;
+      return vPrice < aPrice ? v : acc;
+    }, variants[0]);
+
+    console.log('Min variant for price:', minVar);
+    
+    price = toNum(minVar.final_price || minVar.retail_price);
+    originalPrice = toNum(minVar.mrp);
+    discountPercent = calculateDiscountPercent(minVar);
+    
+    console.log('Price from variant:', price);
+    console.log('OriginalPrice from variant:', originalPrice);
+    console.log('Discount from variant:', discountPercent, '%');
+  } else {
+    console.log('No variants, using product level prices');
+    price = productConsumerPrice || productRetailPrice;
+    originalPrice = productMrp || price;
+    discountPercent = productDiscount;
+    
+    // Calculate discount if not provided
+    if (discountPercent === 0 && originalPrice > price) {
+      discountPercent = Math.round(((originalPrice - price) / originalPrice) * 100);
+    }
+    
+    console.log('Price from product:', price);
+    console.log('OriginalPrice from product:', originalPrice);
+    console.log('Discount from product:', discountPercent, '%');
+  }
+  
+  const result = {
+    ...p,
+    price,
+    originalPrice,
+    discountPercent,
+    variants,
+    // Add product level prices from variants
+    retail_price: productPrices.retail_price || productRetailPrice,
+    consumer_price: productPrices.consumer_price || productConsumerPrice,
+    discount_value: productPrices.discount || productDiscount,
+    gst: productPrices.gst || toNum(p.gst),
+    mrp: productPrices.mrp || productMrp,
+    // Ensure stock status from variants or product level
+    in_stock: variants.length > 0 
+      ? variants.some(v => v.in_stock)
+      : p.stock?.toLowerCase() === 'yes' || p.stock === true
+  };
+  
+  console.log('=== NORMALIZE PRODUCT END ===');
+  console.log('Final normalized product:', {
+    name: result.name,
+    price: result.price,
+    originalPrice: result.originalPrice,
+    discountPercent: result.discountPercent,
+    variantCount: result.variants?.length
+  });
+  
+  return result;
 }
 
 const rs = (size, factor = 0.5) => {
@@ -427,7 +475,7 @@ const Header = ({ location, onLocationPress, cartCount, onCartPress }) => {
   );
 };
 
-// Search bar component with trending searches - UPDATED WITH EXACT FUNCTIONALITY
+// Search bar component with trending searches
 const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
   const navigation = useNavigation();
   const [searchText, setSearchText] = useState('');
@@ -453,7 +501,6 @@ const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
       console.log('=== SEARCH API RESPONSE ===');
       console.log('Response Status:', response.status);
       console.log('Response Data Type:', typeof response.data);
-      console.log('Response Data:', JSON.stringify(response.data, null, 2));
       
       // Handle different response structures
       let results = [];
@@ -488,54 +535,14 @@ const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
       console.log('=== PARSED RESULTS ===');
       console.log('Results Count:', results.length);
       
-      if (results.length > 0) {
-        console.log('First Result Full:', JSON.stringify(results[0], null, 2));
-        
-        if (results[0].quantity) {
-          console.log('=== QUANTITY FIELD DEBUG ===');
-          console.log('Quantity field type:', typeof results[0].quantity);
-          console.log('Quantity field value:', results[0].quantity);
-          
-          // Debug parseVariants
-          const testVariants = parseVariants(results[0].quantity);
-          console.log('Parsed Variants:', testVariants);
-          
-          // Debug normalizeProduct
-          const testNormalized = normalizeProduct(results[0]);
-          console.log('Normalized Product:', {
-            name: testNormalized.name,
-            price: testNormalized.price,
-            originalPrice: testNormalized.originalPrice,
-            discountPercent: testNormalized.discountPercent,
-            variants: testNormalized.variants
-          });
-        }
-      } else {
-        console.log('No results found');
-      }
-      
       const normalizedResults = (results || []).map(normalizeProduct);
-      console.log('=== FINAL NORMALIZED RESULTS ===');
-      normalizedResults.forEach((prod, idx) => {
-        console.log(`Product ${idx + 1}:`, {
-          name: prod.name,
-          price: prod.price,
-          originalPrice: prod.originalPrice,
-          discountPercent: prod.discountPercent,
-          variantCount: prod.variants?.length,
-          variants: prod.variants
-        });
-      });
-      
       setSearchResults(normalizedResults);
       
     } catch (error) {
       console.error('=== SEARCH API ERROR ===');
       console.error('Error Message:', error.message);
-      console.error('Error Stack:', error.stack);
       if (error.response) {
         console.error('Error Response Status:', error.response.status);
-        console.error('Error Response Data:', error.response.data);
       }
       setSearchResults([]);
     } finally {
@@ -547,11 +554,6 @@ const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
   const handleProductPress = (product) => {
     console.log('=== PRODUCT PRESSED ===');
     console.log('Product Name:', product.name);
-    console.log('Product ID:', product._id);
-    console.log('Product Price:', product.price);
-    console.log('Product Original Price:', product.originalPrice);
-    console.log('Product Discount:', product.discountPercent);
-    console.log('Product Variants:', product.variants);
     
     if (onSearchResultPress) {
       onSearchResultPress(product);
@@ -592,26 +594,11 @@ const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
   }, [searchText]);
 
   const renderSearchResultItem = ({ item }) => {
-    console.log('=== RENDERING SEARCH RESULT ITEM ===');
-    console.log('Item ID:', item._id);
-    console.log('Item Name:', item.name);
-    
     const normalizedProduct = normalizeProduct(item);
-    console.log('Normalized Product in render:', {
-      price: normalizedProduct.price,
-      originalPrice: normalizedProduct.originalPrice,
-      discountPercent: normalizedProduct.discountPercent,
-      variants: normalizedProduct.variants
-    });
-    
     const price = toNum(normalizedProduct.price, 0);
     const originalPrice = toNum(normalizedProduct.originalPrice, 0);
-    const discountPercent = normalizedProduct.discountPercent || 0; // Direct from variant
+    const discountPercent = normalizedProduct.discountPercent || 0;
     const hasVariants = normalizedProduct.variants?.length > 0;
-    
-    console.log('Display Price:', price);
-    console.log('Display Original Price:', originalPrice);
-    console.log('Discount (from variant):', discountPercent, '%');
     
     return (
       <TouchableOpacity
@@ -1158,7 +1145,7 @@ const ProductCard = ({ product, style, onPress, onAddToCart, isInCart, navigateT
   const price = toNum(normalizedProduct.price, 0);
   const originalPrice = toNum(normalizedProduct.originalPrice, 0);
   const isProductInCart = isInCart;
-  const isInStock = normalizedProduct.variants?.some(v => v.in_stock) || true;
+  const isInStock = normalizedProduct.in_stock || normalizedProduct.variants?.some(v => v.in_stock);
   
   return (
     <TouchableOpacity 
@@ -1172,20 +1159,6 @@ const ProductCard = ({ product, style, onPress, onAddToCart, isInCart, navigateT
           { transform: [{ scale: scaleAnim }] }
         ]}
       >
-        {/* <TouchableOpacity 
-          style={styles.favoriteButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            setIsFavorite(!isFavorite);
-          }}
-        >
-          <Heart 
-            size={rs(20)} 
-            color={isFavorite ? "#E91E63" : "#777"} 
-            fill={isFavorite ? "#E91E63" : "none"} 
-          />
-        </TouchableOpacity> */}
-        
         {discountPercent > 0 && (
           <View style={styles.badgeContainer}>
             <Text style={styles.badgeText}>
@@ -1217,6 +1190,15 @@ const ProductCard = ({ product, style, onPress, onAddToCart, isInCart, navigateT
           )}
         </Pressable>
         
+        {normalizedProduct.variants?.length > 0 && (
+          <View style={styles.variantIndicator}>
+            <Text style={styles.variantText}>
+              {normalizedProduct.variants[0].label}
+              {normalizedProduct.variants.length > 1 ? ` +${normalizedProduct.variants.length - 1}` : ''}
+            </Text>
+          </View>
+        )}
+        
         <View style={styles.ratingContainer}>
           <Star size={rs(12)} color="#FFC107" fill="#FFC107" />
           <Text style={styles.ratingText}>4.0</Text>
@@ -1245,7 +1227,7 @@ const ProductCard = ({ product, style, onPress, onAddToCart, isInCart, navigateT
             e.stopPropagation();
             if (isProductInCart) {
               navigateToCart();
-            } else {
+            } else if (isInStock) {
               onAddToCart(product, normalizedProduct.variants?.[0]?.label || null, null, false);
             }
           }}
@@ -1256,7 +1238,7 @@ const ProductCard = ({ product, style, onPress, onAddToCart, isInCart, navigateT
             styles.addToCartText,
             isProductInCart && styles.goToCartText
           ]}>
-            {isProductInCart ? 'Go to Cart' : (isInStock ? 'Add to Cart' : 'Out of Stock')}
+            {isProductInCart ? 'Go to Cart' : (isInStock ? 'Add' : 'Out')}
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -1357,14 +1339,9 @@ const ProductDetailsModal = ({
   const normalizedProduct = normalizeProduct(product);
   const displayPrice = getDisplayPrice(normalizedProduct, selectedQuantity);
   const selectedVariant = getVariantDetails(normalizedProduct, selectedQuantity);
+  const originalPrice = getOriginalPrice(normalizedProduct, selectedQuantity);
   
-  // Get product level prices from the first variant
-  const productPrices = getProductPrices(normalizedProduct.variants);
-  
-  // Use discount directly from variant (NO CALCULATION)
-  const actualDiscountPercent = selectedVariant 
-    ? toNum(selectedVariant.discount)
-    : productPrices.discount || 0;
+  const discountPercent = selectedVariant?.discount || normalizedProduct.discountPercent || 0;
 
   return (
     <Modal
@@ -1426,7 +1403,7 @@ const ProductDetailsModal = ({
             {/* Product Name and Category */}
             <View style={styles.productHeaderDetails}>
               <View style={styles.productCategoryBadge}>
-                <Text style={styles.productCategoryText}>{normalizedProduct.category}</Text>
+                <Text style={styles.productCategoryText}>{normalizedProduct.category || 'Category'}</Text>
               </View>
               <Text style={styles.detailsProductName}>{normalizedProduct.name}</Text>
             </View>
@@ -1436,7 +1413,7 @@ const ProductDetailsModal = ({
               <View style={styles.ratingBadge}>
                 <Star size={16} color="#FFD700" fill="#FFD700" />
                 <Text style={styles.ratingValue}>4.5</Text>
-                <Text style={styles.ratingCount}>(128 reviews)</Text>
+                <Text style={styles.ratingCount}>(128)</Text>
               </View>
               <View style={styles.deliveryBadge}>
                 <Truck size={16} color="#FF6B00" />
@@ -1448,21 +1425,17 @@ const ProductDetailsModal = ({
             <View style={styles.detailsPriceSection}>
               <View style={styles.priceMain}>
                 <Text style={styles.detailsPrice}>₹{toNum(displayPrice).toFixed(2)}</Text>
-                {selectedVariant && (
-                  <>
-                    {selectedVariant.mrp > 0 && selectedVariant.mrp > displayPrice && (
-                      <Text style={styles.detailsOriginalPrice}>
-                        ₹{toNum(selectedVariant.mrp).toFixed(2)}
-                      </Text>
-                    )}
-                    {actualDiscountPercent > 0 && (
-                      <View style={styles.detailsDiscountBadge}>
-                        <Text style={styles.detailsDiscountText}>
-                          {actualDiscountPercent}% OFF
-                        </Text>
-                      </View>
-                    )}
-                  </>
+                {originalPrice > 0 && originalPrice > displayPrice && (
+                  <Text style={styles.detailsOriginalPrice}>
+                    ₹{toNum(originalPrice).toFixed(2)}
+                  </Text>
+                )}
+                {discountPercent > 0 && (
+                  <View style={styles.detailsDiscountBadge}>
+                    <Text style={styles.detailsDiscountText}>
+                      {discountPercent}% OFF
+                    </Text>
+                  </View>
                 )}
               </View>
               
@@ -1515,10 +1488,22 @@ const ProductDetailsModal = ({
                 </ScrollView>
               </View>
             ) : (
-              <View style={styles.singleQuantity}>
-                <Text style={styles.singleQuantityLabel}>Available: </Text>
-                <Text style={styles.singleQuantityValue}>
-                  {normalizedProduct?.variants?.[0]?.label || 'Standard Pack'}
+              normalizedProduct?.variants?.length === 1 && (
+                <View style={styles.singleQuantity}>
+                  <Text style={styles.singleQuantityLabel}>Available: </Text>
+                  <Text style={styles.singleQuantityValue}>
+                    {normalizedProduct.variants[0].label}
+                  </Text>
+                </View>
+              )
+            )}
+
+            {/* Show prescription requirement if applicable */}
+            {normalizedProduct.prescription === 'required' && (
+              <View style={styles.prescriptionWarning}>
+                <AlertCircle size={20} color="#FF6B00" />
+                <Text style={styles.prescriptionText}>
+                  Prescription required for this item
                 </Text>
               </View>
             )}
@@ -1530,6 +1515,36 @@ const ProductDetailsModal = ({
                 {normalizedProduct.description || 'No description available'}
               </Text>
             </View>
+
+            {/* Show benefits if available */}
+            {normalizedProduct.benefits && (
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionTitle}>Benefits</Text>
+                <Text style={styles.sectionContent}>
+                  {normalizedProduct.benefits}
+                </Text>
+              </View>
+            )}
+
+            {/* Show dosage if available */}
+            {normalizedProduct.dosage && (
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionTitle}>Dosage</Text>
+                <Text style={styles.sectionContent}>
+                  {normalizedProduct.dosage}
+                </Text>
+              </View>
+            )}
+
+            {/* Show side effects if available */}
+            {normalizedProduct.side_effects && (
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionTitle}>Side Effects</Text>
+                <Text style={styles.sectionContent}>
+                  {normalizedProduct.side_effects}
+                </Text>
+              </View>
+            )}
 
             {/* Key Features */}
             <View style={styles.featuresSection}>
@@ -1568,14 +1583,18 @@ const ProductDetailsModal = ({
                     <Text style={styles.specValue}>{normalizedProduct.sub_category || '—'}</Text>
                   </View>
                   <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Expiry Date</Text>
+                    <Text style={styles.specLabel}>Product Variety</Text>
+                    <Text style={styles.specValue}>{normalizedProduct.productvariety || '—'}</Text>
+                  </View>
+                  <View style={styles.specItem}>
+                    <Text style={styles.specLabel}>Expiry</Text>
                     <Text style={styles.specValue}>{normalizedProduct.expires_on || '—'}</Text>
                   </View>
                   <View style={[styles.specItem, styles.specItemLast]}>
                     <Text style={styles.specLabel}>Availability</Text>
                     <Text style={[
                       styles.specValue,
-                      { color: selectedVariant?.in_stock ? '#FF6B00' : '#FF6B00' }
+                      { color: selectedVariant?.in_stock ? '#4CAF50' : '#FF6B00' }
                     ]}>
                       {selectedVariant?.in_stock ? 'In Stock' : 'Out of Stock'}
                     </Text>
@@ -1595,24 +1614,20 @@ const ProductDetailsModal = ({
                       ₹{toNum(selectedVariant.mrp || normalizedProduct.mrp).toFixed(2)}
                     </Text>
                   </View>
-                  {/* <View style={styles.priceBreakdownItem}>
-                    <Text style={styles.priceBreakdownLabel}>Retail Price</Text>
-                    <Text style={styles.priceBreakdownValue}>
-                      ₹{toNum(selectedVariant.retail_price || normalizedProduct.retail_price).toFixed(2)}
-                    </Text>
-                  </View> */}
                   <View style={styles.priceBreakdownItem}>
                     <Text style={styles.priceBreakdownLabel}>Discount</Text>
-                    <Text style={[styles.priceBreakdownValue, { color: '#FF6B00' }]}>
+                    <Text style={[styles.priceBreakdownValue, { color: '#4CAF50' }]}>
                       {toNum(selectedVariant.discount || normalizedProduct.discount_value)}%
                     </Text>
                   </View>
-                  <View style={styles.priceBreakdownItem}>
-                    <Text style={styles.priceBreakdownLabel}>GST</Text>
-                    <Text style={styles.priceBreakdownValue}>
-                      {toNum(selectedVariant.gst || normalizedProduct.gst)}%
-                    </Text>
-                  </View>
+                  {selectedVariant.gst > 0 && (
+                    <View style={styles.priceBreakdownItem}>
+                      <Text style={styles.priceBreakdownLabel}>GST</Text>
+                      <Text style={styles.priceBreakdownValue}>
+                        {toNum(selectedVariant.gst)}%
+                      </Text>
+                    </View>
+                  )}
                   <View style={[styles.priceBreakdownItem, styles.priceBreakdownTotal]}>
                     <Text style={styles.priceBreakdownLabel}>Final Price</Text>
                     <Text style={[styles.priceBreakdownValue, styles.priceBreakdownTotalValue]}>
@@ -1637,7 +1652,7 @@ const ProductDetailsModal = ({
             onPress={() => {
               if (isInCart) {
                 navigateToCart();
-              } else {
+              } else if (selectedVariant?.in_stock) {
                 onAddToCart(normalizedProduct, selectedQuantity, selectedVariant);
               }
             }}
@@ -2063,6 +2078,8 @@ const Home = () => {
     </SafeAreaView>
   );
 };
+
+
 
 // Enhanced styles with responsive sizing
 const styles = StyleSheet.create({

@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import axiosInstance from '../../Components/AxiosInstance';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import API_URL from '../../../config';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRoute } from '@react-navigation/native';
@@ -147,6 +148,7 @@ const rs = (size, factor = 0.5) => {
 };
 
 const Shop = () => {
+  const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
@@ -767,8 +769,8 @@ const Shop = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor={COLORS.primary} barStyle="light-content" />
+     <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+          <StatusBar backgroundColor="#fff" barStyle="dark-content" />
 
       {/* Modals */}
       {renderProductDetailsModal()}

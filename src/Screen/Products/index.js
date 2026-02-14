@@ -40,10 +40,11 @@ import {
 } from 'lucide-react-native';
 import axiosInstance from '../../Components/AxiosInstance';
 import API_URL from '../../../config';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { addData } from '../../store/Action';
 import Toast from 'react-native-toast-message';
-import { useNavigation } from '@react-navigation/native'; // ✅ IMPORT ADDED HERE
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -51,6 +52,9 @@ const { width, height } = Dimensions.get('window');
 
 function toNum(x, fallback = 0) {
   if (x === null || x === undefined || x === '') return fallback;
+  // If it's already a number, return it
+  if (typeof x === 'number') return x;
+  // If it's a string, clean it and parse
   const n = parseFloat(String(x).toString().replace(/[^0-9.\-]/g, ''));
   return Number.isFinite(n) ? n : fallback;
 }
@@ -58,27 +62,69 @@ function toNum(x, fallback = 0) {
 /** Parse the API's `quantity` field into a clean array of variant objects */
 function parseVariants(raw) {
   try {
+    console.log('Raw quantity data:', JSON.stringify(raw, null, 2));
+    
     let parsed = [];
 
+    // Handle your specific data structure: quantity is an array containing an array
     if (Array.isArray(raw) && raw.length > 0) {
-      if (typeof raw[0] === 'string') {
-        parsed = JSON.parse(raw[0]);
-      } else if (typeof raw[0] === 'object') {
+      // Check if first element is an array (your case)
+      if (Array.isArray(raw[0]) && raw[0].length > 0) {
+        // This handles: quantity: [ [ {...} ] ]
+        const innerArray = raw[0];
+        if (typeof innerArray[0] === 'object') {
+          parsed = innerArray;
+        }
+      } 
+      // Check if first element is a string that needs parsing
+      else if (typeof raw[0] === 'string') {
+        try {
+          const parsedString = JSON.parse(raw[0]);
+          if (Array.isArray(parsedString)) {
+            parsed = parsedString;
+          } else if (typeof parsedString === 'object') {
+            parsed = [parsedString];
+          }
+        } catch (e) {
+          console.warn('Failed to parse stringified quantity:', e);
+        }
+      }
+      // Check if first element is an object (direct array of variants)
+      else if (typeof raw[0] === 'object') {
         parsed = raw;
       }
-    } else if (typeof raw === 'string') {
-      parsed = JSON.parse(raw);
+    } 
+    // Handle if raw is a string
+    else if (typeof raw === 'string') {
+      try {
+        const parsedJSON = JSON.parse(raw);
+        if (Array.isArray(parsedJSON)) {
+          parsed = parsedJSON;
+        } else if (typeof parsedJSON === 'object') {
+          parsed = [parsedJSON];
+        }
+      } catch (e) {
+        console.warn('Failed to parse string quantity:', e);
+      }
+    }
+    // Handle if raw is already an object
+    else if (typeof raw === 'object' && raw !== null) {
+      parsed = [raw];
     }
 
-    return (parsed || []).map(v => ({
+    // Map each variant to ensure proper types
+    const mappedVariants = (parsed || []).map(v => ({
       label: (v.label || '').trim(),
       mrp: toNum(v.mrp),
       discount: toNum(v.discount),
       gst: toNum(v.gst),
       retail_price: toNum(v.retail_price),
       final_price: toNum(v.final_price),
-      in_stock: String(v.in_stock || '').toLowerCase() === 'yes',
+      in_stock: String(v.in_stock || '').toLowerCase() === 'yes' || v.in_stock === true,
     }));
+
+    console.log('Parsed variants:', mappedVariants);
+    return mappedVariants;
   } catch (e) {
     console.warn('Failed to parse variants from quantity:', e);
     return [];
@@ -100,7 +146,7 @@ function getProductPrices(variants) {
   const firstVariant = variants[0];
   return {
     retail_price: toNum(firstVariant.retail_price),
-    consumer_price: toNum(firstVariant.final_price),
+    consumer_price: toNum(firstVariant.final_price || firstVariant.retail_price),
     discount: toNum(firstVariant.discount),
     gst: toNum(firstVariant.gst),
     mrp: toNum(firstVariant.mrp)
@@ -112,12 +158,14 @@ function calculateDiscountPercent(variant) {
   if (!variant) return 0;
   
   const mrp = toNum(variant.mrp);
-  const finalPrice = toNum(variant.final_price);
+  const finalPrice = toNum(variant.final_price || variant.retail_price);
   
+  // If discount is directly provided
   if (variant.discount > 0) {
     return Math.round(toNum(variant.discount));
   }
   
+  // Calculate discount from MRP and final price
   if (mrp > 0 && finalPrice > 0 && mrp > finalPrice) {
     return Math.round(((mrp - finalPrice) / mrp) * 100);
   }
@@ -153,15 +201,24 @@ function getOriginalPrice(product, selectedLabel) {
 
 /** Build a normalized product with price/originalPrice/discountPercent & variants */
 function normalizeProduct(p) {
-  const variants = parseVariants(p.quantity);
+  if (!p) return p;
   
-  const productPrices = getProductPrices(variants);
+  console.log('Normalizing product:', p.name);
+  
+  const variants = parseVariants(p.quantity);
   
   let price = 0;
   let originalPrice = 0;
   let discountPercent = 0;
   
+  // Use product-level prices as fallback
+  const productRetailPrice = toNum(p.retail_price);
+  const productConsumerPrice = toNum(p.consumer_price);
+  const productMrp = toNum(p.mrp);
+  const productDiscount = toNum(p.discount);
+  
   if (variants.length > 0) {
+    // Find variant with lowest price
     const minVar = variants.reduce((acc, v) => {
       const vPrice = v.final_price || v.retail_price || 0;
       const aPrice = acc.final_price || acc.retail_price || 0;
@@ -171,27 +228,52 @@ function normalizeProduct(p) {
     price = toNum(minVar.final_price || minVar.retail_price);
     originalPrice = toNum(minVar.mrp);
     discountPercent = calculateDiscountPercent(minVar);
+  } else {
+    // Use product-level prices
+    price = productConsumerPrice || productRetailPrice;
+    originalPrice = productMrp || price;
+    discountPercent = productDiscount;
+    
+    // Calculate discount if not provided
+    if (discountPercent === 0 && originalPrice > price) {
+      discountPercent = Math.round(((originalPrice - price) / originalPrice) * 100);
+    }
   }
   
-  return {
+  const normalized = {
     ...p,
     price,
     originalPrice,
     discountPercent,
     variants,
-    retail_price: productPrices.retail_price,
-    consumer_price: productPrices.consumer_price,
-    discount_value: productPrices.discount,
-    gst: productPrices.gst,
-    mrp: productPrices.mrp
+    retail_price: productRetailPrice,
+    consumer_price: productConsumerPrice,
+    discount_value: productDiscount,
+    gst: toNum(p.gst),
+    mrp: productMrp,
+    // Ensure stock status from variants or product level
+    in_stock: variants.length > 0 
+      ? variants.some(v => v.in_stock)
+      : p.stock?.toLowerCase() === 'yes' || p.stock === true
   };
+  
+  console.log('Normalized product:', {
+    name: normalized.name,
+    price: normalized.price,
+    originalPrice: normalized.originalPrice,
+    discountPercent: normalized.discountPercent,
+    variantsCount: normalized.variants.length,
+    in_stock: normalized.in_stock
+  });
+  
+  return normalized;
 }
 
 const rs = (size, factor = 0.5) => {
   return size + ((width / 400) - 1) * size * factor;
 };
 
-// Trending searches data (same as Home page)
+// Trending searches data
 const trendingSearches = [
   'Vitamin C', 'Blood Pressure Monitor', 'Diabetes Test Strips', 
   'Immunity Boosters', 'Face Masks', 'Protein Powder', 
@@ -201,7 +283,7 @@ const trendingSearches = [
 /* ---------------------------- Search Bar Component --------------------------- */
 
 const SearchBar = ({ onSearchResultPress, showTrending, setShowTrending }) => {
-  const navigation = useNavigation(); // ✅ Now properly imported
+  const navigation = useNavigation();
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchTimeout, setSearchTimeout] = useState(null);
@@ -493,6 +575,7 @@ const Header = ({ navigation, cartCount }) => {
 /* -------------------------------- Main Component -------------------------------- */
 
 export default function ProductsPage({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState([]);
@@ -576,6 +659,7 @@ export default function ProductsPage({ navigation, route }) {
           fetchedProducts = response.data.products || response.data.data || response.data.result || [];
         }
         
+        console.log('Fetched products for subcategory:', fetchedProducts.length);
         const normalized = (fetchedProducts || []).map(normalizeProduct);
         setAllProducts(normalized);
         setProducts(normalized);
@@ -686,11 +770,12 @@ export default function ProductsPage({ navigation, route }) {
       : null;
     setMainImage(imageUrl);
     
+    // Set default selected quantity from first in-stock variant
     const availableVariant = normalized?.variants?.find(v => v.in_stock);
     setSelectedQuantity(availableVariant?.label || normalized?.variants?.[0]?.label || null);
     
     setShowProductDetails(true);
-  }, [API_URL]);
+  }, []);
 
   /* --------------------- Add to Cart Functions -------------------- */
 
@@ -806,7 +891,7 @@ export default function ProductsPage({ navigation, route }) {
   const renderGridProductCard = useCallback(({ item }) => {
     const isInCart = isProductInCart(item._id);
     const isImageLoaded = imageLoaded[item._id];
-    const isInStock = item.variants?.some(v => v.in_stock);
+    const isInStock = item.in_stock || item.variants?.some(v => v.in_stock);
     
     return (
       <TouchableOpacity
@@ -821,7 +906,7 @@ export default function ProductsPage({ navigation, route }) {
             </View>
           )}
           <Image
-            source={{ uri: `${API_URL}${item?.media?.[0]?.url}` }}
+            source={{ uri: item?.media?.[0]?.url ? `${API_URL}${item.media[0].url}` : 'https://via.placeholder.com/150' }}
             style={[
               styles.productImageGrid,
               !isImageLoaded && styles.hiddenImage
@@ -843,6 +928,15 @@ export default function ProductsPage({ navigation, route }) {
             {item.name}
           </Text>
 
+          {item.variants?.length > 0 && (
+            <View style={styles.variantIndicator}>
+              <Text style={styles.variantText}>
+                {item.variants[0].label}
+                {item.variants.length > 1 ? ` +${item.variants.length - 1}` : ''}
+              </Text>
+            </View>
+          )}
+
           <View style={styles.ratingContainer}>
             <View style={styles.stars}>
               {[1, 2, 3, 4, 5].map((star) => (
@@ -854,7 +948,7 @@ export default function ProductsPage({ navigation, route }) {
                 />
               ))}
             </View>
-            <Text style={styles.ratingText}>4.0 (128)</Text>
+            <Text style={styles.ratingText}>4.0</Text>
           </View>
 
           <View style={styles.priceContainerGrid}>
@@ -884,7 +978,7 @@ export default function ProductsPage({ navigation, route }) {
               e.stopPropagation();
               if (isInCart) {
                 navigateToCart();
-              } else {
+              } else if (isInStock) {
                 handleAddToCart(item, item.variants?.[0]?.label || null, null, false);
               }
             }}
@@ -892,7 +986,7 @@ export default function ProductsPage({ navigation, route }) {
           >
             <ShoppingBag size={16} color="#fff" />
             <Text style={styles.addToCartTextGrid}>
-              {isInCart ? 'Go to Cart' : (isInStock ? 'Add to Cart' : 'Out of Stock')}
+              {isInCart ? 'Go to Cart' : (isInStock ? 'Add' : 'Out')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -903,7 +997,7 @@ export default function ProductsPage({ navigation, route }) {
   const renderListProductCard = useCallback(({ item }) => {
     const isInCart = isProductInCart(item._id);
     const isImageLoaded = imageLoaded[item._id];
-    const isInStock = item.variants?.some(v => v.in_stock);
+    const isInStock = item.in_stock || item.variants?.some(v => v.in_stock);
     
     return (
       <TouchableOpacity
@@ -918,7 +1012,7 @@ export default function ProductsPage({ navigation, route }) {
             </View>
           )}
           <Image
-            source={{ uri: `${API_URL}${item?.media?.[0]?.url}` }}
+            source={{ uri: item?.media?.[0]?.url ? `${API_URL}${item.media[0].url}` : 'https://via.placeholder.com/120' }}
             style={[
               styles.productImageList,
               !isImageLoaded && styles.hiddenImage
@@ -943,6 +1037,15 @@ export default function ProductsPage({ navigation, route }) {
             </View>
           </View>
 
+          {item.variants?.length > 0 && (
+            <View style={styles.variantIndicator}>
+              <Text style={styles.variantText}>
+                {item.variants[0].label}
+                {item.variants.length > 1 ? ` +${item.variants.length - 1} more` : ''}
+              </Text>
+            </View>
+          )}
+
           <Text style={styles.productDescriptionList} numberOfLines={2}>
             {item.description || 'No description available'}
           </Text>
@@ -958,7 +1061,7 @@ export default function ProductsPage({ navigation, route }) {
                 />
               ))}
             </View>
-            <Text style={styles.ratingText}>4.0 (128)</Text>
+            <Text style={styles.ratingText}>4.0</Text>
           </View>
 
           <View style={styles.priceRowList}>
@@ -978,7 +1081,7 @@ export default function ProductsPage({ navigation, route }) {
                 e.stopPropagation();
                 if (isInCart) {
                   navigateToCart();
-                } else {
+                } else if (isInStock) {
                   handleAddToCart(item, item.variants?.[0]?.label || null, null, false);
                 }
               }}
@@ -986,7 +1089,7 @@ export default function ProductsPage({ navigation, route }) {
             >
               <ShoppingBag size={16} color="#fff" />
               <Text style={styles.addToCartTextList}>
-                {isInCart ? 'GO TO CART' : (isInStock ? 'ADD' : 'OUT')}
+                {isInCart ? 'CART' : (isInStock ? 'ADD' : 'OUT')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1012,6 +1115,8 @@ export default function ProductsPage({ navigation, route }) {
     const originalPrice = getOriginalPrice(selectedProduct, selectedQuantity);
     
     const discountPercent = calculateDiscountPercent(selectedVariant);
+
+    console.log('Rendering details for:', selectedProduct.name, 'with variant:', selectedVariant);
 
     return (
       <View style={styles.productDetailsContainer}>
@@ -1061,7 +1166,7 @@ export default function ProductsPage({ navigation, route }) {
           <View style={styles.detailsInfoContainer}>
             <View style={styles.productHeaderDetails}>
               <View style={styles.productCategoryBadge}>
-                <Text style={styles.productCategoryText}>{selectedProduct.category}</Text>
+                <Text style={styles.productCategoryText}>{selectedProduct.category || 'Category'}</Text>
               </View>
               <Text style={styles.detailsProductName}>{selectedProduct.name}</Text>
             </View>
@@ -1070,7 +1175,7 @@ export default function ProductsPage({ navigation, route }) {
               <View style={styles.ratingBadge}>
                 <Star size={16} color="#FFD700" fill="#FFD700" />
                 <Text style={styles.ratingValue}>4.5</Text>
-                <Text style={styles.ratingCount}>(128 reviews)</Text>
+                <Text style={styles.ratingCount}>(128)</Text>
               </View>
               <View style={styles.deliveryBadge}>
                 <Truck size={16} color="#FF6B00" />
@@ -1102,7 +1207,7 @@ export default function ProductsPage({ navigation, route }) {
               )}
             </View>
 
-            {selectedProduct?.variants?.length > 1 ? (
+            {selectedProduct?.variants?.length > 0 && (
               <View style={styles.quantitySection}>
                 <Text style={styles.quantityTitle}>Select Quantity</Text>
                 <ScrollView 
@@ -1141,11 +1246,14 @@ export default function ProductsPage({ navigation, route }) {
                   ))}
                 </ScrollView>
               </View>
-            ) : (
-              <View style={styles.singleQuantity}>
-                <Text style={styles.singleQuantityLabel}>Available: </Text>
-                <Text style={styles.singleQuantityValue}>
-                  {selectedProduct?.variants?.[0]?.label || 'Standard Pack'}
+            )}
+
+            {/* Show prescription requirement if applicable */}
+            {selectedProduct.prescription === 'required' && (
+              <View style={styles.prescriptionWarning}>
+                <AlertCircle size={20} color="#FF6B00" />
+                <Text style={styles.prescriptionText}>
+                  Prescription required for this item
                 </Text>
               </View>
             )}
@@ -1156,6 +1264,36 @@ export default function ProductsPage({ navigation, route }) {
                 {selectedProduct.description || 'No description available'}
               </Text>
             </View>
+
+            {/* Show benefits if available */}
+            {selectedProduct.benefits && (
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionTitle}>Benefits</Text>
+                <Text style={styles.sectionContent}>
+                  {selectedProduct.benefits}
+                </Text>
+              </View>
+            )}
+
+            {/* Show dosage if available */}
+            {selectedProduct.dosage && (
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionTitle}>Dosage</Text>
+                <Text style={styles.sectionContent}>
+                  {selectedProduct.dosage}
+                </Text>
+              </View>
+            )}
+
+            {/* Show side effects if available */}
+            {selectedProduct.side_effects && (
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionTitle}>Side Effects</Text>
+                <Text style={styles.sectionContent}>
+                  {selectedProduct.side_effects}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.featuresSection}>
               <Text style={styles.sectionTitle}>Key Features</Text>
@@ -1192,7 +1330,11 @@ export default function ProductsPage({ navigation, route }) {
                     <Text style={styles.specValue}>{selectedProduct.sub_category || '—'}</Text>
                   </View>
                   <View style={styles.specItem}>
-                    <Text style={styles.specLabel}>Expiry Date</Text>
+                    <Text style={styles.specLabel}>Product Variety</Text>
+                    <Text style={styles.specValue}>{selectedProduct.productvariety || '—'}</Text>
+                  </View>
+                  <View style={styles.specItem}>
+                    <Text style={styles.specLabel}>Expiry</Text>
                     <Text style={styles.specValue}>{selectedProduct.expires_on || '—'}</Text>
                   </View>
                   <View style={[styles.specItem, styles.specItemLast]}>
@@ -1224,12 +1366,14 @@ export default function ProductsPage({ navigation, route }) {
                       {toNum(selectedVariant.discount)}%
                     </Text>
                   </View>
-                  <View style={styles.priceBreakdownItem}>
-                    <Text style={styles.priceBreakdownLabel}>GST</Text>
-                    <Text style={styles.priceBreakdownValue}>
-                      {toNum(selectedVariant.gst)}%
-                    </Text>
-                  </View>
+                  {selectedVariant.gst > 0 && (
+                    <View style={styles.priceBreakdownItem}>
+                      <Text style={styles.priceBreakdownLabel}>GST</Text>
+                      <Text style={styles.priceBreakdownValue}>
+                        {toNum(selectedVariant.gst)}%
+                      </Text>
+                    </View>
+                  )}
                   <View style={[styles.priceBreakdownItem, styles.priceBreakdownTotal]}>
                     <Text style={styles.priceBreakdownLabel}>Final Price</Text>
                     <Text style={[styles.priceBreakdownValue, styles.priceBreakdownTotalValue]}>
@@ -1253,7 +1397,7 @@ export default function ProductsPage({ navigation, route }) {
             onPress={() => {
               if (isInCart) {
                 navigateToCart();
-              } else {
+              } else if (selectedVariant?.in_stock) {
                 handleAddToCart(selectedProduct, selectedQuantity, selectedVariant);
               }
             }}
@@ -1274,7 +1418,32 @@ export default function ProductsPage({ navigation, route }) {
 
   /* ---------------------------- Success Modal ---------------------------- */
 
-  const renderSuccessModal = () => (
+ const renderSuccessModal = () => {
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (showSuccessModal) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      scaleAnim.setValue(0);
+      opacityAnim.setValue(0);
+    }
+  }, [showSuccessModal]);
+
+  return (
     <Modal
       animationType="fade"
       transparent={true}
@@ -1282,22 +1451,67 @@ export default function ProductsPage({ navigation, route }) {
       onRequestClose={() => setShowSuccessModal(false)}
       statusBarTranslucent
     >
-      <View style={styles.successModalOverlay}>
-        <Animated.View style={styles.successModal}>
+      <Animated.View 
+        style={[
+          styles.successModalOverlay,
+          { opacity: opacityAnim }
+        ]}
+      >
+        <Animated.View 
+          style={[
+            styles.successModal,
+            {
+              transform: [
+                { scale: scaleAnim },
+                {
+                  translateY: scaleAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={styles.successModalContent}>
-            <View style={styles.successIconContainer}>
-              <CheckCircle size={60} color="#FF6B00" />
+            {/* Success Icon with Pulse Animation */}
+            <View style={styles.successIconWrapper}>
+              <Animated.View 
+                style={[
+                  styles.successIconContainer,
+                  {
+                    transform: [{
+                      scale: scaleAnim.interpolate({
+                        inputRange: [0, 0.5, 1],
+                        outputRange: [0, 1.2, 1],
+                      }),
+                    }],
+                  },
+                ]}
+              >
+                <CheckCircle size={60} color="#10b981" />
+              </Animated.View>
             </View>
-            <Text style={styles.successModalTitle}>Added to Cart!</Text>
+
+            {/* Text Content */}
+            <Text style={styles.successModalTitle}>Success! 🎉</Text>
             <Text style={styles.successModalMessage}>
-              {addedProductName} has been successfully added to your cart.
+              <Text style={styles.successProductName}>{addedProductName}</Text>
+              {'\n'}has been added to your cart
             </Text>
-            
+
+            {/* Action Buttons */}
             <View style={styles.successModalButtons}>
               <TouchableOpacity 
                 style={styles.continueButton}
-                onPress={() => setShowSuccessModal(false)}
-                activeOpacity={0.8}
+                onPress={() => {
+                  Animated.timing(opacityAnim, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: true,
+                  }).start(() => setShowSuccessModal(false));
+                }}
+                activeOpacity={0.7}
               >
                 <Text style={styles.continueButtonText}>Continue Shopping</Text>
               </TouchableOpacity>
@@ -1305,22 +1519,42 @@ export default function ProductsPage({ navigation, route }) {
               <TouchableOpacity 
                 style={styles.viewCartButton}
                 onPress={() => {
-                  setShowSuccessModal(false);
-                  navigateToCart();
+                  Animated.timing(opacityAnim, {
+                    toValue: 0,
+                    duration: 150,
+                    useNativeDriver: true,
+                  }).start(() => {
+                    setShowSuccessModal(false);
+                    navigateToCart();
+                  });
                 }}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
                 <ShoppingBag size={18} color="#fff" />
                 <Text style={styles.viewCartButtonText}>
-                  View Cart ({cartCount})
+                  View Cart 
+                  {cartCount > 0 && (
+                    <Text style={styles.viewCartButtonCount}> ({cartCount})</Text>
+                  )}
                 </Text>
               </TouchableOpacity>
             </View>
+
+            {/* Close Button (Optional) */}
+            <TouchableOpacity 
+              style={styles.closeButton}
+              onPress={() => setShowSuccessModal(false)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <X size={20} color="#9ca3af" />
+            </TouchableOpacity>
           </View>
         </Animated.View>
-      </View>
+      </Animated.View>
     </Modal>
   );
+};
+
 
   /* ----------------------------- List Components ----------------------------- */
 
@@ -1379,8 +1613,8 @@ export default function ProductsPage({ navigation, route }) {
   /* ---------------------------------- Main UI ---------------------------------- */
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
 
       {/* Modals */}
       {renderSortModal()}
@@ -1393,7 +1627,7 @@ export default function ProductsPage({ navigation, route }) {
           {/* Header */}
           <Header navigation={navigation} cartCount={cartCount} />
 
-          {/* Search Bar (Home page ki tarah) */}
+          {/* Search Bar */}
           <SearchBar 
             onSearchResultPress={handleShowProductDetails}
             showTrending={showTrending}
@@ -1545,10 +1779,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f9fa',
-    paddingTop: Platform.OS === 'ios' ? 39 : 0,
   },
   
-  // Header Styles (Home page ki tarah)
+  // Header Styles
   header: {
     backgroundColor: '#fff',
     paddingHorizontal: rs(15),
@@ -1605,7 +1838,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   
-  // Search Bar Styles (Home page se same)
+  // Search Bar Styles
   searchBarContainer: {
     backgroundColor: '#FF6B00',
     padding: rs(15),
@@ -1799,7 +2032,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   
-  // Rest of the styles from your original ProductsPage (unchanged)
+  // Categories Section
   categoriesSection: {
     backgroundColor: '#fff',
     paddingVertical: 16,
@@ -1810,7 +2043,7 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   categoryScrollContent: {
-    paddingHorizontal: 1,
+    paddingHorizontal: 16,
   },
   categoryButton: {
     paddingHorizontal: 20,
@@ -2104,6 +2337,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  goToCartButton: {
+    backgroundColor: '#FF6B00',
+  },
   
   // List View Product Card
   productCardList: {
@@ -2337,7 +2573,7 @@ const styles = StyleSheet.create({
   },
   deliveryText: {
     fontSize: 12,
-    color: '#FF6B00',
+    color: '#4CAF50',
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -2436,19 +2672,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '600',
   },
-  singleQuantity: {
+  prescriptionWarning: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    backgroundColor: '#FFF3E0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
   },
-  singleQuantityLabel: {
+  prescriptionText: {
     fontSize: 14,
-    color: '#666',
-  },
-  singleQuantityValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    color: '#FF6B00',
+    fontWeight: '500',
   },
   detailsSection: {
     marginBottom: 24,
@@ -2641,82 +2877,191 @@ const styles = StyleSheet.create({
   },
   
   // Success Modal
+  // successModalOverlay: {
+  //   flex: 1,
+  //   backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   padding: 20,
+  // },
+  // successModal: {
+  //   width: '100%',
+  //   maxWidth: 400,
+  //   backgroundColor: '#fff',
+  //   borderRadius: 24,
+  //   elevation: 5,
+  //   shadowColor: '#000',
+  //   shadowOffset: { width: 0, height: 4 },
+  //   shadowOpacity: 0.3,
+  //   shadowRadius: 8,
+  // },
+  // successModalContent: {
+  //   padding: 32,
+  //   alignItems: 'center',
+  // },
+  // successIconContainer: {
+  //   width: 80,
+  //   height: 80,
+  //   borderRadius: 40,
+  //   backgroundColor: '#E8F5E9',
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   marginBottom: 24,
+  // },
+  // successModalTitle: {
+  //   fontSize: 24,
+  //   fontWeight: 'bold',
+  //   color: '#333',
+  //   marginBottom: 12,
+  //   textAlign: 'center',
+  // },
+  // successModalMessage: {
+  //   fontSize: 16,
+  //   color: '#666',
+  //   textAlign: 'center',
+  //   marginBottom: 32,
+  //   lineHeight: 24,
+  // },
+  // successModalButtons: {
+  //   flexDirection: 'row',
+  //   width: '100%',
+  //   gap: 12,
+  // },
+  // continueButton: {
+  //   flex: 1,
+  //   paddingVertical: 16,
+  //   borderRadius: 12,
+  //   backgroundColor: '#f5f5f5',
+  //   alignItems: 'center',
+  // },
+  // continueButtonText: {
+  //   fontSize: 16,
+  //   fontWeight: '600',
+  //   color: '#333',
+  // },
+  // viewCartButton: {
+  //   flex: 1,
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  //   paddingVertical: 16,
+  //   borderRadius: 12,
+  //   backgroundColor: '#FF6B00',
+  //   gap: 8,
+  // },
+  // viewCartButtonText: {
+  //   fontSize: 16,
+  //   fontWeight: '600',
+  //   color: '#fff',
+  // },
   successModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   successModal: {
     width: '100%',
-    maxWidth: 400,
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    elevation: 5,
+    maxWidth: 340,
+    backgroundColor: '#ffffff',
+    borderRadius: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   successModalContent: {
-    padding: 32,
+    padding: 28,
     alignItems: 'center',
+    position: 'relative',
+  },
+  successIconWrapper: {
+    marginBottom: 20,
   },
   successIconContainer: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: '#ecfdf5',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#10b981',
   },
   successModalTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   successModalMessage: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
+    color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
+    marginBottom: 28,
+    lineHeight: 22,
+  },
+  successProductName: {
+    fontWeight: '600',
+    color: '#111827',
   },
   successModalButtons: {
     flexDirection: 'row',
     width: '100%',
-    gap: 12,
+    gap: 10,
   },
   continueButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#f3f4f6',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   continueButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: '#4b5563',
   },
   viewCartButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#FF6B00',
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#10b981',
     gap: 8,
+    shadowColor: '#10b981',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   viewCartButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#fff',
+    color: '#ffffff',
+  },
+  viewCartButtonCount: {
+    fontWeight: '400',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    padding: 4,
   },
   
   // Footer Loader

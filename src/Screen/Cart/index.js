@@ -23,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RazorpayCheckout from 'react-native-razorpay';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import LinearGradient from 'react-native-linear-gradient';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { deleteProduct, updateData, clearProducts } from '../../store/Action';
 import axiosInstance from '../../Components/AxiosInstance';
 import API_URL from '../../../config';
@@ -491,6 +491,7 @@ const RemoveItemModal = ({ visible, onClose, onConfirm, itemName }) => {
 };
 
 const Cart = () => {
+  const insets = useSafeAreaInsets();
   const cartItems = useSelector((state) => state.app.data || []);
   const dispatch = useDispatch();
   const navigation = useNavigation();
@@ -1828,7 +1829,7 @@ const renderProductDetails = () => {
         </ScrollView>
 
         {/* Fixed Footer */}
-        <View style={styles.detailsFooter}>
+        {/* <View style={styles.detailsFooter}>
           <TouchableOpacity
             style={[
               styles.addToCartButtonLarge,
@@ -1874,7 +1875,7 @@ const renderProductDetails = () => {
               <Text style={styles.addToCartPrice}>₹{displayPrice.toFixed(2)}</Text>
             )}
           </TouchableOpacity>
-        </View>
+        </View> */}
       </SafeAreaView>
     </Modal>
   );
@@ -2295,7 +2296,8 @@ const renderProductDetails = () => {
 
   if (loading && cartItems.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
+       <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+   <StatusBar backgroundColor="#fff" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF6B00" />
           <Text style={styles.loadingText}>Loading your cart...</Text>
@@ -2305,8 +2307,8 @@ const renderProductDetails = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Clear Cart Modal */}
+   <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+         <StatusBar backgroundColor="#fff" barStyle="dark-content" />
       <ClearCartModal
         visible={showClearCartModal}
         onClose={() => setShowClearCartModal(false)}

@@ -8,6 +8,7 @@ import {
   SafeAreaView,
   Dimensions,
   ScrollView,
+  StatusBar,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -26,6 +27,7 @@ import {
   X,
 } from 'lucide-react-native';
 import axiosInstance from '../../Components/AxiosInstance';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
@@ -36,6 +38,7 @@ const rs = (size, factor = 0.5) => {
   return size + ((width / 400) - 1) * size * factor;
 };
 const LoginScreen = () => {
+  const insets = useSafeAreaInsets();
   const [isSignUp, setIsSignUp] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -710,7 +713,8 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+         <StatusBar backgroundColor="#fff" barStyle="dark-content" />
       <KeyboardAvoidingView
         style={{flex: 1}}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

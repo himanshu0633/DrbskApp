@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axiosInstance from '../../Components/AxiosInstance';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   Package, 
   Calendar, 
@@ -44,6 +45,7 @@ import {
 } from 'lucide-react-native';
 
 const OrdersScreen = () => {
+  const insets = useSafeAreaInsets();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -538,7 +540,7 @@ const OrdersScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Header */}

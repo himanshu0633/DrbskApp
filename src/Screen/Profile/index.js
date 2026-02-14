@@ -382,12 +382,7 @@ const Profile = () => {
             </Text>
           </View>
           
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowSupportModal(false)}
-          >
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
+       
         </View>
       </View>
     </Modal>
