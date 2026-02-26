@@ -1120,29 +1120,36 @@ export default function ProductsPage({ navigation, route }) {
 
     return (
       <View style={styles.productDetailsContainer}>
-        <View style={styles.detailsHeader}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowProductDetails(false)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ArrowLeft size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.detailsTitle}>Product Details</Text>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={navigateToCart}
-          >
-            <ShoppingBag size={22} color="#333" />
-            {cartCount > 0 && (
-              <View style={styles.cartBadge}>
-                <Text style={styles.cartBadgeText}>
-                  {cartCount > 9 ? '9+' : cartCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+        <View style={styles.header}>
+      <View style={styles.headerContent}>
+        {/* Left: Back Button */}
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => setShowProductDetails(false)} 
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <ArrowLeft size={24} color="#333" />
+        </TouchableOpacity>
+        
+        {/* Center: Header Title */}
+        <Text style={styles.headerTitle}>Products Details</Text>
+        
+        {/* Right: Cart Button */}
+        <TouchableOpacity 
+          style={[styles.iconButton, styles.cartButton]}
+          onPress={() => navigation.navigate('Cart')}
+        >
+          <ShoppingBag size={rs(20)} color="#333" />
+          {cartCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.badgeText}>
+                {cartCount > 9 ? '9+' : cartCount}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
 
         <ScrollView 
           style={styles.detailsContent}
@@ -1418,142 +1425,142 @@ export default function ProductsPage({ navigation, route }) {
 
   /* ---------------------------- Success Modal ---------------------------- */
 
- const renderSuccessModal = () => {
-  const scaleAnim = useRef(new Animated.Value(0)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
+//  const renderSuccessModal = () => {
+//   const scaleAnim = useRef(new Animated.Value(0)).current;
+//   const opacityAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    if (showSuccessModal) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 50,
-          friction: 7,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      scaleAnim.setValue(0);
-      opacityAnim.setValue(0);
-    }
-  }, [showSuccessModal]);
+//   useEffect(() => {
+//     if (showSuccessModal) {
+//       Animated.parallel([
+//         Animated.spring(scaleAnim, {
+//           toValue: 1,
+//           tension: 50,
+//           friction: 7,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(opacityAnim, {
+//           toValue: 1,
+//           duration: 200,
+//           useNativeDriver: true,
+//         }),
+//       ]).start();
+//     } else {
+//       scaleAnim.setValue(0);
+//       opacityAnim.setValue(0);
+//     }
+//   }, [showSuccessModal]);
 
-  return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={showSuccessModal}
-      onRequestClose={() => setShowSuccessModal(false)}
-      statusBarTranslucent
-    >
-      <Animated.View 
-        style={[
-          styles.successModalOverlay,
-          { opacity: opacityAnim }
-        ]}
-      >
-        <Animated.View 
-          style={[
-            styles.successModal,
-            {
-              transform: [
-                { scale: scaleAnim },
-                {
-                  translateY: scaleAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [50, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.successModalContent}>
-            {/* Success Icon with Pulse Animation */}
-            <View style={styles.successIconWrapper}>
-              <Animated.View 
-                style={[
-                  styles.successIconContainer,
-                  {
-                    transform: [{
-                      scale: scaleAnim.interpolate({
-                        inputRange: [0, 0.5, 1],
-                        outputRange: [0, 1.2, 1],
-                      }),
-                    }],
-                  },
-                ]}
-              >
-                <CheckCircle size={60} color="#10b981" />
-              </Animated.View>
-            </View>
+//   return (
+//     <Modal
+//       animationType="fade"
+//       transparent={true}
+//       visible={showSuccessModal}
+//       onRequestClose={() => setShowSuccessModal(false)}
+//       statusBarTranslucent
+//     >
+//       <Animated.View 
+//         style={[
+//           styles.successModalOverlay,
+//           { opacity: opacityAnim }
+//         ]}
+//       >
+//         <Animated.View 
+//           style={[
+//             styles.successModal,
+//             {
+//               transform: [
+//                 { scale: scaleAnim },
+//                 {
+//                   translateY: scaleAnim.interpolate({
+//                     inputRange: [0, 1],
+//                     outputRange: [50, 0],
+//                   }),
+//                 },
+//               ],
+//             },
+//           ]}
+//         >
+//           <View style={styles.successModalContent}>
+//             {/* Success Icon with Pulse Animation */}
+//             <View style={styles.successIconWrapper}>
+//               <Animated.View 
+//                 style={[
+//                   styles.successIconContainer,
+//                   {
+//                     transform: [{
+//                       scale: scaleAnim.interpolate({
+//                         inputRange: [0, 0.5, 1],
+//                         outputRange: [0, 1.2, 1],
+//                       }),
+//                     }],
+//                   },
+//                 ]}
+//               >
+//                 <CheckCircle size={60} color="#10b981" />
+//               </Animated.View>
+//             </View>
 
-            {/* Text Content */}
-            <Text style={styles.successModalTitle}>Success! 🎉</Text>
-            <Text style={styles.successModalMessage}>
-              <Text style={styles.successProductName}>{addedProductName}</Text>
-              {'\n'}has been added to your cart
-            </Text>
+//             {/* Text Content */}
+//             <Text style={styles.successModalTitle}>Success! 🎉</Text>
+//             <Text style={styles.successModalMessage}>
+//               <Text style={styles.successProductName}>{addedProductName}</Text>
+//               {'\n'}has been added to your cart
+//             </Text>
 
-            {/* Action Buttons */}
-            <View style={styles.successModalButtons}>
-              <TouchableOpacity 
-                style={styles.continueButton}
-                onPress={() => {
-                  Animated.timing(opacityAnim, {
-                    toValue: 0,
-                    duration: 150,
-                    useNativeDriver: true,
-                  }).start(() => setShowSuccessModal(false));
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.continueButtonText}>Continue Shopping</Text>
-              </TouchableOpacity>
+//             {/* Action Buttons */}
+//             <View style={styles.successModalButtons}>
+//               <TouchableOpacity 
+//                 style={styles.continueButton}
+//                 onPress={() => {
+//                   Animated.timing(opacityAnim, {
+//                     toValue: 0,
+//                     duration: 150,
+//                     useNativeDriver: true,
+//                   }).start(() => setShowSuccessModal(false));
+//                 }}
+//                 activeOpacity={0.7}
+//               >
+//                 <Text style={styles.continueButtonText}>Continue Shopping</Text>
+//               </TouchableOpacity>
               
-              <TouchableOpacity 
-                style={styles.viewCartButton}
-                onPress={() => {
-                  Animated.timing(opacityAnim, {
-                    toValue: 0,
-                    duration: 150,
-                    useNativeDriver: true,
-                  }).start(() => {
-                    setShowSuccessModal(false);
-                    navigateToCart();
-                  });
-                }}
-                activeOpacity={0.7}
-              >
-                <ShoppingBag size={18} color="#fff" />
-                <Text style={styles.viewCartButtonText}>
-                  View Cart 
-                  {cartCount > 0 && (
-                    <Text style={styles.viewCartButtonCount}> ({cartCount})</Text>
-                  )}
-                </Text>
-              </TouchableOpacity>
-            </View>
+//               <TouchableOpacity 
+//                 style={styles.viewCartButton}
+//                 onPress={() => {
+//                   Animated.timing(opacityAnim, {
+//                     toValue: 0,
+//                     duration: 150,
+//                     useNativeDriver: true,
+//                   }).start(() => {
+//                     setShowSuccessModal(false);
+//                     navigateToCart();
+//                   });
+//                 }}
+//                 activeOpacity={0.7}
+//               >
+//                 <ShoppingBag size={18} color="#fff" />
+//                 <Text style={styles.viewCartButtonText}>
+//                   View Cart 
+//                   {cartCount > 0 && (
+//                     <Text style={styles.viewCartButtonCount}> ({cartCount})</Text>
+//                   )}
+//                 </Text>
+//               </TouchableOpacity>
+//             </View>
 
-            {/* Close Button (Optional) */}
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => setShowSuccessModal(false)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <X size={20} color="#9ca3af" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
-  );
-};
+//             {/* Close Button (Optional) */}
+//             <TouchableOpacity 
+//               style={styles.closeButton}
+//               onPress={() => setShowSuccessModal(false)}
+//               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+//             >
+//               <X size={20} color="#9ca3af" />
+//             </TouchableOpacity>
+//           </View>
+//         </Animated.View>
+//       </Animated.View>
+//     </Modal>
+//   );
+// };
 
 
   /* ----------------------------- List Components ----------------------------- */
@@ -1618,7 +1625,7 @@ export default function ProductsPage({ navigation, route }) {
 
       {/* Modals */}
       {renderSortModal()}
-      {renderSuccessModal()}
+      {/* {renderSuccessModal()} */}
 
       {showProductDetails ? (
         renderProductDetails()

@@ -33,7 +33,25 @@ const rs = (size, factor = 0.5) => {
   return size + ((width / 400) - 1) * size * factor;
 };
 
-// Product Normalization Functions (Fixed)
+// Lucide Icons Import (using MaterialIcons as fallback for React Native)
+import {
+  ArrowLeft,
+  Star,
+  Shield,
+  Package,
+  Truck,
+  RotateCcw,
+  Clock,
+  ShoppingBag,
+  AlertCircle,
+  X,
+  CreditCard,
+  Wallet,
+  CheckCircle,
+} from 'lucide-react-native';
+
+// ============= UTILITY FUNCTIONS (MUST BE DEFINED BEFORE COMPONENT) =============
+
 function toNum(x, fallback = 0) {
   if (x === null || x === undefined || x === '') return fallback;
   const n = parseFloat(String(x).toString().replace(/[^0-9.\-]/g, ''));
@@ -265,230 +283,7 @@ function getOriginalPrice(product, selectedLabel) {
   return toNum(firstVariant.mrp || 0);
 }
 
-// Lucide Icons Import
-import {
-  ArrowLeft,
-  Star,
-  Shield,
-  Package,
-  Truck,
-  RotateCcw,
-  Clock,
-  ShoppingBag,
-  AlertCircle,
-  X,
-} from 'lucide-react-native';
-
-// Clear Cart Modal Component
-const ClearCartModal = ({ visible, onClose, onConfirm }) => {
-  const slideAnim = useRef(new Animated.Value(height)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 100,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: height,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <Modal
-      transparent={true}
-      animationType="none"
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-        <Animated.View 
-          style={[
-            styles.clearModalContainer, 
-            { transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          {/* Header */}
-          <View style={styles.clearModalHeader}>
-            <View style={styles.clearModalIconContainer}>
-              <AlertCircle size={30} color="#FF6B00" />
-            </View>
-            <TouchableOpacity 
-              style={styles.clearModalCloseBtn}
-              onPress={onClose}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <X size={22} color="#666" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Content */}
-          <View style={styles.clearModalContent}>
-            <Text style={styles.clearModalTitle}>Clear Cart</Text>
-            <Text style={styles.clearModalDescription}>
-              Are you sure you want to remove all items from your cart? This action cannot be undone.
-            </Text>
-          </View>
-
-          {/* Buttons */}
-          <View style={styles.clearModalButtons}>
-            <TouchableOpacity
-              style={styles.clearModalCancelBtn}
-              onPress={onClose}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.clearModalCancelText}>Cancel</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.clearModalConfirmBtn}
-              onPress={onConfirm}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#FF6B00', '#FF8E53']}
-                style={styles.clearModalGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.clearModalConfirmText}>Clear All</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
-  );
-};
-
-// Remove Item Modal Component
-const RemoveItemModal = ({ visible, onClose, onConfirm, itemName }) => {
-  const slideAnim = useRef(new Animated.Value(height)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          tension: 100,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: height,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  }, [visible]);
-
-  if (!visible) return null;
-
-  return (
-    <Modal
-      transparent={true}
-      animationType="none"
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
-        <Animated.View 
-          style={[
-            styles.removeModalContainer, 
-            { transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          {/* Header */}
-          <View style={styles.removeModalHeader}>
-            <View style={styles.removeModalIconContainer}>
-              <AlertCircle size={30} color="#FF6B00" />
-            </View>
-            <TouchableOpacity 
-              style={styles.removeModalCloseBtn}
-              onPress={onClose}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <X size={22} color="#666" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Content */}
-          <View style={styles.removeModalContent}>
-            <Text style={styles.removeModalTitle}>Remove Item</Text>
-            <Text style={styles.removeModalDescription}>
-              Are you sure you want to remove "{itemName}" from your cart?
-            </Text>
-          </View>
-
-          {/* Buttons */}
-          <View style={styles.removeModalButtons}>
-            <TouchableOpacity
-              style={styles.removeModalCancelBtn}
-              onPress={onClose}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.removeModalCancelText}>Keep Item</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={styles.removeModalConfirmBtn}
-              onPress={onConfirm}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#FF4444', '#FF6B6B']}
-                style={styles.removeModalGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                
-                <Text style={styles.removeModalConfirmText}>Remove</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
-      </Animated.View>
-    </Modal>
-  );
-};
+// ============= COMPONENT STARTS HERE =============
 
 const Cart = () => {
   const insets = useSafeAreaInsets();
@@ -505,6 +300,13 @@ const Cart = () => {
   const [cities, setCities] = useState([]);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  
+  // Payment method states
+  const [paymentMethod, setPaymentMethod] = useState('online');
+  const [codCharge] = useState(99);
+  const [codProcessing, setCodProcessing] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   
   // Product Details Modal State
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -535,6 +337,9 @@ const Cart = () => {
   // User data state
   const [userData, setUserData] = useState(null);
   
+  // User type detection
+  const [isWholesaler, setIsWholesaler] = useState(false);
+  
   // Clear Cart Modal State
   const [showClearCartModal, setShowClearCartModal] = useState(false);
   
@@ -546,25 +351,19 @@ const Cart = () => {
   // Ref to track if component is mounted
   const isMounted = useRef(true);
 
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
+  // ============= FUNCTION DEFINITIONS (NOW SAFE TO USE IN HOOKS) =============
 
-  // Email validation function
-  const isValidEmail = useCallback((email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  }, []);
-
-  // Calculate item price
-  const getItemPrice = (item) => {
+  // Calculate item price with wholesale logic
+  const getItemPrice = useCallback((item) => {
     try {
       let price = 0;
       
+      // Check if user is wholesaler and item has retail_price
+      if (isWholesaler && item.retail_price) {
+        price = parseFloat(item.retail_price);
+      }
       // Check for selectedVariant price first
-      if (item.selectedVariant && item.selectedVariant.final_price) {
+      else if (item.selectedVariant && item.selectedVariant.final_price) {
         price = parseFloat(item.selectedVariant.final_price);
       }
       // Check for final_price
@@ -590,14 +389,95 @@ const Cart = () => {
       console.error('Error getting item price:', error);
       return 0;
     }
-  };
+  }, [isWholesaler]);
 
-  // Calculate total price
-  const totalPrice = cartItems.reduce((acc, item) => {
+  // Email validation function
+  const isValidEmail = useCallback((email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }, []);
+
+  // Calculate totals with user type based pricing
+  const baseTotal = cartItems.reduce((acc, item) => {
     const price = getItemPrice(item);
-    const quantity = parseInt(item.quantity) || 1;
-    return acc + price * quantity;
+    return acc + price * (item.quantity || 1);
   }, 0);
+
+  const codTotal = paymentMethod === 'cod' ? baseTotal + codCharge : baseTotal;
+  const finalTotal = paymentMethod === 'cod' ? codTotal : baseTotal;
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  // Get product image URL
+  const getProductImageUrl = useCallback((item) => {
+    try {
+      console.log('Getting image for:', item?.name);
+      
+      // Priority 1: Check if item has media array with URL
+      if (item?.media && Array.isArray(item.media) && item.media.length > 0) {
+        const firstMedia = item.media[0];
+        if (firstMedia && firstMedia.url) {
+          // Check if URL is already absolute
+          if (firstMedia.url.startsWith('http://') || firstMedia.url.startsWith('https://')) {
+            console.log('Using absolute media URL:', firstMedia.url);
+            return firstMedia.url;
+          }
+          
+          // If relative URL, prepend API_URL
+          const fullUrl = `${API_URL}${firstMedia.url}`;
+          console.log('Using relative media URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Priority 2: Check if product has direct image property
+      if (item?.image) {
+        if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
+          console.log('Using absolute image URL:', item.image);
+          return item.image;
+        } else {
+          const fullUrl = `${API_URL}${item.image}`;
+          console.log('Using relative image URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Priority 3: Check for product_image
+      if (item?.product_image) {
+        if (item.product_image.startsWith('http://') || item.product_image.startsWith('https://')) {
+          console.log('Using absolute product_image URL:', item.product_image);
+          return item.product_image;
+        } else {
+          const fullUrl = `${API_URL}${item.product_image}`;
+          console.log('Using relative product_image URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Priority 4: Check for selectedVariant image
+      if (item?.selectedVariant && item.selectedVariant.image) {
+        if (item.selectedVariant.image.startsWith('http://') || item.selectedVariant.image.startsWith('https://')) {
+          console.log('Using variant absolute image URL:', item.selectedVariant.image);
+          return item.selectedVariant.image;
+        } else {
+          const fullUrl = `${API_URL}${item.selectedVariant.image}`;
+          console.log('Using variant relative image URL:', fullUrl);
+          return fullUrl;
+        }
+      }
+      
+      // Fallback to placeholder
+      console.log('No image found, using placeholder');
+      return 'https://via.placeholder.com/300x300?text=No+Image';
+    } catch (error) {
+      console.error('Error getting product image:', error);
+      return 'https://via.placeholder.com/300x300?text=Error';
+    }
+  }, []);
 
   // Initialize data
   const initializeData = useCallback(async () => {
@@ -611,6 +491,9 @@ const Cart = () => {
         setIsAuthenticated(true);
         setUserData(parsedUserData);
         
+        // Check if user is wholesaler
+        setIsWholesaler(parsedUserData?.type === "wholesalePartner");
+        
         // Set form data from user data
         setFormData(prev => ({
           ...prev,
@@ -619,9 +502,11 @@ const Cart = () => {
         }));
         
         console.log('User authenticated:', parsedUserData.email);
+        console.log('Is wholesaler:', parsedUserData?.type === "wholesalePartner");
       } else {
         setIsAuthenticated(false);
         setUserData(null);
+        setIsWholesaler(false);
         console.log('User not authenticated - guest mode');
       }
 
@@ -758,6 +643,11 @@ const Cart = () => {
     setShowCityDropdown(false);
   };
 
+  // Handle payment method change
+  const handlePaymentMethodChange = (method) => {
+    setPaymentMethod(method);
+  };
+
   // Handle product click - OPEN MODAL
   const handleProductClick = useCallback((item) => {
     console.log('=== PRODUCT CLICKED ===');
@@ -793,74 +683,7 @@ const Cart = () => {
     setSelectedQuantity(defaultLabel);
     
     setShowProductDetails(true);
-  }, []);
-
-  // Get product image URL
-  const getProductImageUrl = (item) => {
-    try {
-      console.log('Getting image for:', item?.name);
-      
-      // Priority 1: Check if item has media array with URL
-      if (item?.media && Array.isArray(item.media) && item.media.length > 0) {
-        const firstMedia = item.media[0];
-        if (firstMedia && firstMedia.url) {
-          // Check if URL is already absolute
-          if (firstMedia.url.startsWith('http://') || firstMedia.url.startsWith('https://')) {
-            console.log('Using absolute media URL:', firstMedia.url);
-            return firstMedia.url;
-          }
-          
-          // If relative URL, prepend API_URL
-          const fullUrl = `${API_URL}${firstMedia.url}`;
-          console.log('Using relative media URL:', fullUrl);
-          return fullUrl;
-        }
-      }
-      
-      // Priority 2: Check if product has direct image property
-      if (item?.image) {
-        if (item.image.startsWith('http://') || item.image.startsWith('https://')) {
-          console.log('Using absolute image URL:', item.image);
-          return item.image;
-        } else {
-          const fullUrl = `${API_URL}${item.image}`;
-          console.log('Using relative image URL:', fullUrl);
-          return fullUrl;
-        }
-      }
-      
-      // Priority 3: Check for product_image
-      if (item?.product_image) {
-        if (item.product_image.startsWith('http://') || item.product_image.startsWith('https://')) {
-          console.log('Using absolute product_image URL:', item.product_image);
-          return item.product_image;
-        } else {
-          const fullUrl = `${API_URL}${item.product_image}`;
-          console.log('Using relative product_image URL:', fullUrl);
-          return fullUrl;
-        }
-      }
-      
-      // Priority 4: Check for selectedVariant image
-      if (item?.selectedVariant && item.selectedVariant.image) {
-        if (item.selectedVariant.image.startsWith('http://') || item.selectedVariant.image.startsWith('https://')) {
-          console.log('Using variant absolute image URL:', item.selectedVariant.image);
-          return item.selectedVariant.image;
-        } else {
-          const fullUrl = `${API_URL}${item.selectedVariant.image}`;
-          console.log('Using variant relative image URL:', fullUrl);
-          return fullUrl;
-        }
-      }
-      
-      // Fallback to placeholder
-      console.log('No image found, using placeholder');
-      return 'https://via.placeholder.com/300x300?text=No+Image';
-    } catch (error) {
-      console.error('Error getting product image:', error);
-      return 'https://via.placeholder.com/300x300?text=Error';
-    }
-  };
+  }, [getProductImageUrl]);
 
   // Handle quantity change in cart
   const handleQuantityChange = useCallback((itemId, newQuantity, e) => {
@@ -1043,19 +866,193 @@ const Cart = () => {
     }
   };
 
-  // Handle checkout
-  const handleCheckout = async () => {
-    console.log("=== STARTING CHECKOUT PROCESS ===");
+  // Handle COD checkout
+  const handleCODCheckout = async () => {
+    console.log("=== STARTING COD CHECKOUT ===");
     
-    if (checkoutLoading || paymentProcessing) {
-      console.log("Checkout already in progress");
-      return;
-    }
+    setCodProcessing(true);
 
+    try {
+      if (!formData.selectedAddress) {
+        Toast.show({
+          type: 'warning',
+          text1: 'Warning',
+          text2: 'Please select an address before checkout.',
+        });
+        setCodProcessing(false);
+        return;
+      }
+
+      if (!cartItems || cartItems.length === 0) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Your cart is empty',
+        });
+        setCodProcessing(false);
+        return;
+      }
+
+      const checkoutEmail = formData.email || await AsyncStorage.getItem('guestEmail') || '';
+      
+      if (!checkoutEmail || !isValidEmail(checkoutEmail)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Please provide a valid email address',
+        });
+        setCodProcessing(false);
+        return;
+      }
+
+      let phoneNumber = formData.phone?.toString().trim();
+
+      if (!phoneNumber) {
+        const selectedAddressObj = addresses.find(addr => 
+          typeof addr === 'object' ? addr.fullAddress === formData.selectedAddress : addr === formData.selectedAddress
+        );
+        
+        if (selectedAddressObj && typeof selectedAddressObj === 'object' && selectedAddressObj.phone) {
+          phoneNumber = selectedAddressObj.phone;
+        } else {
+          phoneNumber = await AsyncStorage.getItem('guestPhone') || '';
+        }
+      }
+
+      phoneNumber = phoneNumber.replace(/^\+91/, '').replace(/^91/, '').trim();
+
+      if (!phoneNumber || !/^\d{10}$/.test(phoneNumber)) {
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Please provide a valid 10-digit phone number',
+        });
+        setCodProcessing(false);
+        return;
+      }
+
+      const orderItems = cartItems.map((item) => {
+        const qty = parseInt(item.quantity) || 1;
+        const price = getItemPrice(item);
+
+        if (!item._id || !item.name || qty < 1 || price <= 0) {
+          throw new Error(`Invalid item data for: ${item.name || 'Unknown item'}`);
+        }
+
+        return {
+          productId: item._id,
+          name: item.name.trim(),
+          quantity: qty,
+          price: price
+        };
+      });
+
+      const userDataStr = await AsyncStorage.getItem('userData');
+      let userId;
+      let isGuest = true;
+      
+      if (userDataStr) {
+        const userData = JSON.parse(userDataStr);
+        if (userData._id) {
+          userId = userData._id;
+          isGuest = false;
+        }
+      }
+      
+      if (!userId) {
+        userId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      }
+
+      const codPayload = {
+        userId: userId,
+        items: orderItems,
+        address: formData.selectedAddress.trim(),
+        phone: phoneNumber,
+        email: checkoutEmail,
+        totalAmount: parseFloat(finalTotal.toFixed(2)),
+        baseAmount: parseFloat(baseTotal.toFixed(2)),
+        codCharge: codCharge,
+        isGuest: isGuest,
+        isWholesaler: isWholesaler
+      };
+
+      console.log("Creating COD order:", codPayload);
+      
+      setIsProcessing(true);
+      setProcessingMessage("Creating your COD order...");
+
+      const response = await axiosInstance.post('/api/createCOD', codPayload);
+
+      if (response.data.success) {
+        console.log("✅ COD order created successfully:", response.data.orderId);
+        
+        setProcessingMessage("Finalizing your order...");
+        
+        dispatch(clearProducts());
+        
+        if (isGuest) {
+          await AsyncStorage.removeItem('guestAddresses');
+          await AsyncStorage.removeItem('guestEmail');
+          await AsyncStorage.removeItem('guestPhone');
+        }
+        
+        setSuccessMessage(`COD Order placed successfully! Order ID: ${response.data.orderId}`);
+        setShowSuccessModal(true);
+        
+        setTimeout(() => {
+          setIsProcessing(false);
+          setCodProcessing(false);
+          setShowSuccessModal(false);
+          navigation.navigate('Success', {
+            orderId: response.data.orderId,
+            orderDetails: response.data.orderDetails,
+            isCOD: true,
+            codCharge: codCharge
+          });
+        }, 2000);
+        
+      } else {
+        console.error("❌ COD order creation failed:", response.data.message);
+        setIsProcessing(false);
+        setCodProcessing(false);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.data.message || 'Failed to create COD order',
+        });
+      }
+
+    } catch (error) {
+      console.error('=== COD CHECKOUT ERROR ===');
+      console.error('Error:', error.message);
+      console.error('Response:', error.response?.data);
+
+      let errorMessage = 'COD order failed. Please try again.';
+
+      if (error.response?.status === 400) {
+        const validationError = error.response.data?.message;
+        if (validationError) {
+          errorMessage = validationError;
+        }
+      } 
+
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: errorMessage,
+      });
+      setIsProcessing(false);
+      setCodProcessing(false);
+    }
+  };
+
+  // Handle online payment checkout
+  const handleOnlineCheckout = async () => {
+    console.log("=== STARTING ONLINE CHECKOUT PROCESS ===");
+    
     setCheckoutLoading(true);
 
     try {
-      // Form validation
       if (!formData.selectedAddress) {
         Toast.show({
           type: 'warning',
@@ -1076,33 +1073,7 @@ const Cart = () => {
         return;
       }
 
-      // Validate all cart items before proceeding
-      const invalidItems = [];
-      cartItems.forEach((item) => {
-        const qty = parseInt(item.quantity) || 1;
-        const price = getItemPrice(item);
-        
-        if (!item._id || !item.name || qty < 1 || price <= 0 || isNaN(price)) {
-          invalidItems.push(item.name || 'Unknown item');
-        }
-      });
-
-      if (invalidItems.length > 0) {
-        console.error('Invalid cart items:', invalidItems);
-        Toast.show({
-          type: 'error',
-          text1: 'Invalid Items',
-          text2: `Please remove or update: ${invalidItems.join(', ')}`,
-        });
-        setCheckoutLoading(false);
-        return;
-      }
-
-      // Get email from form or AsyncStorage
-      let checkoutEmail = formData.email;
-      if (!checkoutEmail || !isValidEmail(checkoutEmail)) {
-        checkoutEmail = await AsyncStorage.getItem('guestEmail') || '';
-      }
+      const checkoutEmail = formData.email || await AsyncStorage.getItem('guestEmail') || '';
       
       if (!checkoutEmail || !isValidEmail(checkoutEmail)) {
         Toast.show({
@@ -1114,11 +1085,9 @@ const Cart = () => {
         return;
       }
 
-      // Get phone number
       let phoneNumber = formData.phone?.toString().trim();
 
-      if (!phoneNumber || phoneNumber.length !== 10) {
-        // Try to get from saved addresses
+      if (!phoneNumber) {
         const selectedAddressObj = addresses.find(addr => 
           typeof addr === 'object' ? addr.fullAddress === formData.selectedAddress : addr === formData.selectedAddress
         );
@@ -1142,19 +1111,9 @@ const Cart = () => {
         return;
       }
 
-      // Prepare order items
       const orderItems = cartItems.map((item) => {
         const qty = parseInt(item.quantity) || 1;
         const price = getItemPrice(item);
-        
-        console.log('Processing item:', {
-          name: item.name,
-          id: item._id,
-          quantity: qty,
-          price: price,
-          final_price: item.final_price,
-          calculatedPrice: price
-        });
 
         return {
           productId: item._id,
@@ -1164,7 +1123,6 @@ const Cart = () => {
         };
       });
 
-      // Create guest user ID if not logged in
       const userDataStr = await AsyncStorage.getItem('userData');
       let userId;
       let isGuest = true;
@@ -1181,7 +1139,6 @@ const Cart = () => {
         userId = `guest_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       }
 
-      // Calculate total amount from order items
       const totalAmount = orderItems.reduce((sum, item) => {
         return sum + (item.price * item.quantity);
       }, 0);
@@ -1196,7 +1153,6 @@ const Cart = () => {
         return;
       }
 
-      // Prepare order payload
       const orderPayload = {
         userId: userId,
         items: orderItems,
@@ -1204,13 +1160,12 @@ const Cart = () => {
         phone: phoneNumber,
         email: checkoutEmail,
         totalAmount: parseFloat(totalAmount.toFixed(2)),
-        isGuest: isGuest
+        isGuest: isGuest,
+        isWholesaler: isWholesaler
       };
 
       console.log("Creating Razorpay order...");
-      console.log("Order payload:", JSON.stringify(orderPayload, null, 2));
       
-      // Step 1: Create Razorpay Order
       const orderResponse = await axiosInstance.post('/api/createPaymentOrder', orderPayload);
 
       if (!orderResponse.data.success) {
@@ -1227,15 +1182,11 @@ const Cart = () => {
 
       const { order: razorpayOrder } = orderResponse.data;
       console.log("✅ Razorpay order created:", razorpayOrder.id);
-      console.log("Order amount:", razorpayOrder.amount);
-      console.log("Order currency:", razorpayOrder.currency);
 
-      // Show processing loader
       setIsProcessing(true);
       setProcessingMessage("Creating payment order...");
       setPaymentProcessing(true);
 
-      // Step 2: Open Razorpay checkout
       const options = {
         description: 'Order Payment - Dr BSK',
         currency: razorpayOrder.currency || 'INR',
@@ -1257,9 +1208,7 @@ const Cart = () => {
       };
 
       console.log("Opening Razorpay checkout...");
-      console.log("Razorpay options:", options);
       
-      // Open Razorpay
       RazorpayCheckout.open(options).then(async (razorpayData) => {
         console.log("Razorpay payment success:", razorpayData);
         
@@ -1267,11 +1216,7 @@ const Cart = () => {
           throw new Error('Payment ID not received from Razorpay');
         }
         
-        // Update processing message
         setProcessingMessage("Verifying your payment...");
-        
-        // Step 3: Verify payment and create order
-        console.log("Verifying payment and creating order...");
         
         const verifyPayload = {
           razorpay_order_id: razorpayData.razorpay_order_id,
@@ -1280,7 +1225,6 @@ const Cart = () => {
           ...orderPayload
         };
 
-        // Update loader message
         setProcessingMessage("Creating your order...");
         
         const verifyResponse = await axiosInstance.post('/api/verifyPayment', verifyPayload);
@@ -1288,29 +1232,23 @@ const Cart = () => {
         if (verifyResponse.data.success) {
           console.log("✅ Order created successfully:", verifyResponse.data.orderId);
           
-          // Update loader for final step
           setProcessingMessage("Finalizing your order...");
           
-          // Clear cart
           dispatch(clearProducts());
           
-          // Clear guest addresses if guest user
           if (isGuest) {
             await AsyncStorage.removeItem('guestAddresses');
             await AsyncStorage.removeItem('guestEmail');
             await AsyncStorage.removeItem('guestPhone');
           }
           
-          // Show success
           Toast.show({
             type: 'success',
             text1: 'Success',
             text2: 'Order placed successfully!',
           });
           
-          // Wait 2 seconds before navigating
           setTimeout(() => {
-            // Hide loader and navigate
             setIsProcessing(false);
             setPaymentProcessing(false);
             setCheckoutLoading(false);
@@ -1339,7 +1277,6 @@ const Cart = () => {
         setPaymentProcessing(false);
         setCheckoutLoading(false);
         
-        // Handle Razorpay errors
         if (error.error && typeof error.error === 'object') {
           const errorCode = error.error.code;
           let errorMsg = error.error.description || 'Payment failed';
@@ -1356,7 +1293,6 @@ const Cart = () => {
             text2: errorMsg,
           });
         } else if (error.error && typeof error.error === 'string') {
-          // If error is a string
           Toast.show({
             type: 'error',
             text1: 'Payment Failed',
@@ -1377,9 +1313,7 @@ const Cart = () => {
       
       let errorMessage = 'Checkout failed. Please try again.';
 
-      // Handle specific error cases
       if (error.response) {
-        // Server error (500)
         if (error.response.status === 500) {
           errorMessage = 'Server error. Please try again later or contact support.';
         } else if (error.response.status === 400) {
@@ -1391,7 +1325,6 @@ const Cart = () => {
           errorMessage = error.response.data.message;
         }
       } else if (error.request) {
-        // Network error
         errorMessage = 'Network error. Please check your internet connection.';
       }
 
@@ -1404,6 +1337,22 @@ const Cart = () => {
       setIsProcessing(false);
       setCheckoutLoading(false);
       setPaymentProcessing(false);
+    }
+  };
+
+  // Handle checkout based on payment method
+  const handleCheckout = async () => {
+    console.log("=== STARTING CHECKOUT ===");
+    
+    if (checkoutLoading || paymentProcessing || codProcessing || isProcessing) {
+      console.log("Checkout already in progress");
+      return;
+    }
+
+    if (paymentMethod === 'cod') {
+      await handleCODCheckout();
+    } else {
+      await handleOnlineCheckout();
     }
   };
 
@@ -1466,421 +1415,105 @@ const Cart = () => {
     );
   };
 
-  
- // Render product details modal
-const renderProductDetails = () => {
-  if (!selectedProduct) {
-    console.log("No selected product to show");
-    return null;
-  }
-
-  console.log("Rendering product details for:", selectedProduct.name);
-  console.log("Selected product data:", {
-    name: selectedProduct.name,
-    variants: selectedProduct.variants,
-    price: selectedProduct.price,
-    mrp: selectedProduct.mrp,
-    selectedQuantity: selectedQuantity
-  });
-
-  const variants = selectedProduct.variants || [];
-  const isInCart = cartItems.some(item => item._id === selectedProduct._id);
-  
-  // Get selected variant details
-  const selectedVariant = selectedQuantity 
-    ? variants.find(v => v && v.label === selectedQuantity)
-    : variants[0];
-    
-  console.log("Selected variant:", selectedVariant);
-
-  // Calculate display prices
-  const displayPrice = selectedVariant 
-    ? toNum(selectedVariant.final_price || selectedVariant.retail_price || 0)
-    : toNum(selectedProduct.price || selectedProduct.final_price || selectedProduct.retail_price || 0);
-    
-  const originalPrice = selectedVariant 
-    ? toNum(selectedVariant.mrp || 0)
-    : toNum(selectedProduct.mrp || selectedProduct.originalPrice || 0);
-    
-  const discountPercent = calculateDiscountPercent(selectedVariant) || selectedProduct.discountPercent || 0;
-
-  // Get variant prices for breakdown
-  const variantMRP = selectedVariant ? toNum(selectedVariant.mrp) : toNum(selectedProduct.mrp);
-  const variantRetailPrice = selectedVariant ? toNum(selectedVariant.retail_price) : toNum(selectedProduct.retail_price);
-  const variantFinalPrice = selectedVariant ? toNum(selectedVariant.final_price) : toNum(selectedProduct.final_price || displayPrice);
-  const variantDiscount = selectedVariant ? toNum(selectedVariant.discount) : toNum(selectedProduct.discount_value);
-  const variantGST = selectedVariant ? toNum(selectedVariant.gst) : toNum(selectedProduct.gst);
-
-  console.log("Price calculations:", {
-    displayPrice,
-    originalPrice,
-    discountPercent,
-    variantMRP,
-    variantRetailPrice,
-    variantFinalPrice
-  });
-
-  return (
-    <Modal
-      animationType="slide"
-      transparent={false}
-      visible={showProductDetails}
-      onRequestClose={() => setShowProductDetails(false)}
-    >
-      <SafeAreaView style={styles.productDetailsContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-        
-        {/* Custom Header */}
-        <View style={styles.detailsHeader}>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={() => setShowProductDetails(false)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ArrowLeft size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.detailsTitle}>Product Details</Text>
+  // Render cart items
+  const renderCartItems = () => {
+    if (cartItems.length === 0) {
+      return (
+        <View style={styles.emptyCart}>
+          <View style={styles.emptyCartIcon}>
+            <Text style={styles.emptyCartEmoji}>🛒</Text>
+          </View>
+          <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
+          <Text style={styles.emptyCartText}>Add some items to get started</Text>
           <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('Cart')}
+            style={styles.continueShoppingBtn}
+            onPress={() => navigation.navigate("Category")}
           >
-            <ShoppingBag size={22} color="#333" />
-            {cartItems.length > 0 && (
-              <View style={styles.cartBadgeModal}>
-                <Text style={styles.cartBadgeTextModal}>
-                  {cartItems.length > 9 ? '9+' : cartItems.length}
-                </Text>
-              </View>
-            )}
+            <Text style={styles.continueShoppingText}>Start Shopping</Text>
           </TouchableOpacity>
         </View>
+      );
+    }
 
-        <ScrollView 
-          style={styles.detailsContent}
-          showsVerticalScrollIndicator={false}
+    return cartItems.map((item, index) => {
+      const itemPrice = getItemPrice(item);
+      const discount = item.discount || 0;
+      const imageUrl = getProductImageUrl(item);
+      
+      console.log(`Rendering cart item ${index}:`, {
+        name: item.name,
+        price: itemPrice,
+        imageUrl: imageUrl
+      });
+      
+      return (
+        <TouchableOpacity
+          key={`${item._id}_${index}_${item.selectedVariant?.label || 'default'}`}
+          style={styles.cartItem}
+          onPress={() => handleProductClick(item)}
+          activeOpacity={0.7}
         >
-          {/* Image Gallery */}
-          <View style={styles.imageGallery}>
-            {mainImage ? (
-              <Image 
-                source={{ uri: mainImage }} 
-                style={styles.detailsImage} 
-                resizeMode="contain" 
-                onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-              />
-            ) : (
-              <View style={styles.noImageContainer}>
-                <Package size={60} color="#ccc" />
-                <Text style={styles.noImageText}>No image available</Text>
-              </View>
-            )}
+          {/* Product Image */}
+          <View style={styles.imageContainer}>
+            <Image 
+              source={{ 
+                uri: imageUrl,
+                cache: 'force-cache'
+              }} 
+              style={styles.productImage}
+              resizeMode="contain"
+            />
           </View>
 
-          {/* Product Info */}
-          <View style={styles.detailsInfoContainer}>
-            {/* Product Name and Category */}
-            <View style={styles.productHeaderDetails}>
-              <View style={styles.productCategoryBadge}>
-                <Text style={styles.productCategoryText}>
-                  {selectedProduct.category || 'General'}
-                </Text>
-              </View>
-              <Text style={styles.detailsProductName}>
-                {selectedProduct.name || 'Product'}
+          <View style={styles.itemDetails}>
+            <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+            {item.selectedVariant?.label && (
+              <Text style={styles.itemVariant}>{item.selectedVariant.label}</Text>
+            )}
+            <Text style={styles.itemDescription}>{item.quantity || 1} Pack</Text>
+
+            <View style={styles.itemPricing}>
+              <Text style={styles.currentPrice}>
+                ₹{itemPrice.toFixed(2)}
               </Text>
-            </View>
-
-            {/* Rating and Reviews */}
-            <View style={styles.ratingSection}>
-              <View style={styles.ratingBadge}>
-                <Star size={16} color="#FFD700" fill="#FFD700" />
-                <Text style={styles.ratingValue}>4.5</Text>
-                <Text style={styles.ratingCount}>(128 reviews)</Text>
-              </View>
-              <View style={styles.deliveryBadge}>
-                <Truck size={16} color="#FF6B00" />
-                <Text style={styles.deliveryText}>Free Delivery</Text>
-              </View>
-            </View>
-
-            {/* Price Section */}
-            <View style={styles.detailsPriceSection}>
-              <View style={styles.priceMain}>
-                <Text style={styles.detailsPrice}>₹{displayPrice.toFixed(2)}</Text>
-                
-                {/* Show Original Price (MRP) if different from display price */}
-                {originalPrice > 0 && originalPrice > displayPrice && (
-                  <Text style={styles.detailsOriginalPrice}>
-                    ₹{originalPrice.toFixed(2)}
-                  </Text>
-                )}
-                
-                {/* Show Discount Badge */}
-                {discountPercent > 0 && (
-                  <View style={styles.detailsDiscountBadge}>
-                    <Text style={styles.detailsDiscountText}>
-                      {discountPercent}% OFF
-                    </Text>
-                  </View>
-                )}
-              </View>
-              
-              {/* Display GST information */}
-              {variantGST > 0 && (
-                <View style={styles.gstBadge}>
-                  <Text style={styles.gstText}>+ {variantGST}% GST applicable</Text>
-                </View>
-              )}
-              
-              {/* Display Final Price if different */}
-              {variantFinalPrice > 0 && variantFinalPrice !== displayPrice && (
-                <View style={styles.finalPriceBadge}>
-                  <Text style={styles.finalPriceText}>
-                    Final Price: ₹{variantFinalPrice.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Quantity Selector */}
-            {variants.length > 1 ? (
-              <View style={styles.quantitySection}>
-                <Text style={styles.quantityTitle}>Select Quantity</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.quantityScroll}
-                >
-                  {variants.map((v, index) => {
-                    if (!v) return null;
-                    
-                    const variantPrice = toNum(v.final_price || v.retail_price);
-                    const variantMrp = toNum(v.mrp);
-                    const variantDiscountValue = toNum(v.discount);
-                    const isSelected = selectedQuantity === v.label;
-                    
-                    return (
-                      <TouchableOpacity
-                        key={`${v.label}-${index}`}
-                        style={[
-                          styles.quantityOption,
-                          isSelected && styles.quantityOptionSelected,
-                          !v.in_stock && styles.quantityOptionDisabled,
-                        ]}
-                        onPress={() => v.in_stock && setSelectedQuantity(v.label)}
-                        disabled={!v.in_stock}
-                      >
-                        <Text style={[
-                          styles.quantityOptionText,
-                          isSelected && styles.quantityOptionTextSelected,
-                          !v.in_stock && styles.quantityOptionTextDisabled,
-                        ]}>
-                          {v.label}
-                        </Text>
-                        <Text style={[
-                          styles.quantityOptionPrice,
-                          isSelected && styles.quantityOptionPriceSelected,
-                        ]}>
-                          ₹{variantPrice.toFixed(2)}
-                        </Text>
-                        
-                        {/* Show variant discount if available */}
-                        {variantDiscountValue > 0 && (
-                          <Text style={styles.variantDiscountText}>
-                            {variantDiscountValue}% OFF
-                          </Text>
-                        )}
-                        
-                        {!v.in_stock && (
-                          <Text style={styles.outOfStockLabel}>Out of Stock</Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            ) : variants.length === 1 ? (
-              <View style={styles.singleQuantity}>
-                <Text style={styles.singleQuantityLabel}>Available: </Text>
-                <Text style={styles.singleQuantityValue}>
-                  {variants[0]?.label || 'Standard Pack'}
+              {discount > 0 && (
+                <Text style={styles.discount}>
+                  {Math.round(discount)}% OFF
                 </Text>
-                {!variants[0]?.in_stock && (
-                  <Text style={styles.outOfStockText}> - Out of Stock</Text>
-                )}
-              </View>
-            ) : null}
-
-            {/* Description */}
-            <View style={styles.detailsSection}>
-              <Text style={styles.sectionTitle}>Description</Text>
-              <Text style={styles.sectionContent}>
-                {selectedProduct.description || 'No description available'}
-              </Text>
-            </View>
-
-            {/* Key Features */}
-            <View style={styles.featuresSection}>
-              <Text style={styles.sectionTitle}>Key Features</Text>
-              <View style={styles.featuresGrid}>
-                <View style={styles.featureItem}>
-                  <Shield size={20} color="#FF6B00" />
-                  <Text style={styles.featureText}>100% Authentic</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Package size={20} color="#2196F3" />
-                  <Text style={styles.featureText}>Secure Packaging</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <RotateCcw size={20} color="#FF9800" />
-                  <Text style={styles.featureText}>Easy Returns</Text>
-                </View>
-                <View style={styles.featureItem}>
-                  <Clock size={20} color="#9C27B0" />
-                  <Text style={styles.featureText}>24/7 Support</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Specifications */}
-            <View style={styles.specsSection}>
-              <Text style={styles.sectionTitle}>Specifications</Text>
-              <View style={styles.specsGrid}>
-                <View style={styles.specItem}>
-                  <Text style={styles.specLabel}>Category</Text>
-                  <Text style={styles.specValue}>{selectedProduct.category || '—'}</Text>
-                </View>
-                <View style={styles.specItem}>
-                  <Text style={styles.specLabel}>Sub Category</Text>
-                  <Text style={styles.specValue}>{selectedProduct.sub_category || '—'}</Text>
-                </View>
-                <View style={styles.specItem}>
-                  <Text style={styles.specLabel}>Expiry Date</Text>
-                  <Text style={styles.specValue}>{selectedProduct.expires_on || '—'}</Text>
-                </View>
-                <View style={[styles.specItem, styles.specItemLast]}>
-                  <Text style={styles.specLabel}>Availability</Text>
-                  <Text style={[
-                    styles.specValue,
-                    { color: selectedVariant?.in_stock ? '#4CAF50' : '#F44336' }
-                  ]}>
-                    {selectedVariant?.in_stock ? 'In Stock' : 'Out of Stock'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            
-            {/* Price Breakdown */}
-            <View style={styles.priceBreakdownSection}>
-              <Text style={styles.sectionTitle}>Price Breakdown</Text>
-              <View style={styles.priceBreakdownGrid}>
-                <View style={styles.priceBreakdownItem}>
-                  <Text style={styles.priceBreakdownLabel}>Maximum Retail Price (MRP)</Text>
-                  <Text style={styles.priceBreakdownValue}>
-                    ₹{variantMRP.toFixed(2)}
-                  </Text>
-                </View>
-                
-                <View style={styles.priceBreakdownItem}>
-                  <Text style={styles.priceBreakdownLabel}>Retail Price</Text>
-                  <Text style={styles.priceBreakdownValue}>
-                    ₹{variantRetailPrice.toFixed(2)}
-                  </Text>
-                </View>
-                
-                {variantDiscount > 0 && (
-                  <View style={styles.priceBreakdownItem}>
-                    <Text style={styles.priceBreakdownLabel}>Discount</Text>
-                    <Text style={[styles.priceBreakdownValue, { color: '#FF6B00', fontWeight: 'bold' }]}>
-                      {variantDiscount}% OFF
-                    </Text>
-                  </View>
-                )}
-                
-                {variantGST > 0 && (
-                  <View style={styles.priceBreakdownItem}>
-                    <Text style={styles.priceBreakdownLabel}>GST</Text>
-                    <Text style={styles.priceBreakdownValue}>
-                      {variantGST}%
-                    </Text>
-                  </View>
-                )}
-                
-                <View style={[styles.priceBreakdownItem, styles.priceBreakdownTotal]}>
-                  <Text style={styles.priceBreakdownLabel}>Final Price (Including all taxes)</Text>
-                  <Text style={[styles.priceBreakdownValue, styles.priceBreakdownTotalValue]}>
-                    ₹{variantFinalPrice.toFixed(2)}
-                  </Text>
-                </View>
-                
-                {/* Savings Calculation */}
-                {variantMRP > 0 && variantFinalPrice > 0 && variantMRP > variantFinalPrice && (
-                  <View style={styles.savingsContainer}>
-                    <Text style={styles.savingsLabel}>You Save</Text>
-                    <Text style={styles.savingsValue}>
-                      ₹{(variantMRP - variantFinalPrice).toFixed(2)}
-                      {variantDiscount > 0 && ` (${variantDiscount}%)`}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              )}
             </View>
           </View>
-        </ScrollView>
 
-        {/* Fixed Footer */}
-        {/* <View style={styles.detailsFooter}>
-          <TouchableOpacity
-            style={[
-              styles.addToCartButtonLarge,
-              (!selectedVariant?.in_stock || !variants.some(v => v?.in_stock)) && 
-                styles.addToCartButtonDisabled,
-              isInCart && styles.goToCartButton
-            ]}
-            onPress={() => {
-              if (isInCart) {
-                // Already in cart, just close modal
-                setShowProductDetails(false);
-              } else {
-                // Add to cart logic here
-                const priceToUse = displayPrice;
-                
-                const payload = {
-                  ...selectedProduct,
-                  selectedQuantity: selectedQuantity,
-                  selectedVariant: selectedVariant,
-                  price: priceToUse,
-                  addedAt: new Date().toISOString(),
-                  quantity: 1,
-                };
-                
-                dispatch(updateData(payload));
-                
-                Toast.show({
-                  type: 'success',
-                  text1: 'Added to Cart!',
-                  text2: `${selectedProduct.name} has been added to your cart`,
-                });
-                
-                setShowProductDetails(false);
-              }
-            }}
-            disabled={!selectedVariant?.in_stock}
-          >
-            <ShoppingBag size={22} color="#fff" />
-            <Text style={styles.addToCartTextLarge}>
-              {isInCart ? 'View in Cart' : (selectedVariant?.in_stock ? 'Add to Cart' : 'Out of Stock')}
-            </Text>
-            {selectedVariant?.in_stock && !isInCart && (
-              <Text style={styles.addToCartPrice}>₹{displayPrice.toFixed(2)}</Text>
-            )}
-          </TouchableOpacity>
-        </View> */}
-      </SafeAreaView>
-    </Modal>
-  );
-};
+          <View style={styles.itemActions}>
+            <View style={styles.quantityControls}>
+              <TouchableOpacity
+                style={[styles.quantityBtn, (item.quantity || 1) <= 1 && styles.disabledBtn]}
+                onPress={(e) => handleQuantityChange(item._id, (item.quantity || 1) - 1, e)}
+                disabled={(item.quantity || 1) <= 1}
+              >
+                <Text style={styles.quantityBtnText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.quantity}>{item.quantity || 1}</Text>
+              <TouchableOpacity
+                style={styles.quantityBtn}
+                onPress={(e) => handleQuantityChange(item._id, (item.quantity || 1) + 1, e)}
+              >
+                <Text style={styles.quantityBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity 
+              style={styles.removeBtn}
+              onPress={(e) => handleRemoveItem(item._id, item.name, e)}
+            >
+              <Text style={styles.removeBtnText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      );
+    });
+  };
 
+  // Render processing loader
   const renderProcessingLoader = () => (
     <Modal
       transparent={true}
@@ -2195,109 +1828,257 @@ const renderProductDetails = () => {
     </Modal>
   );
 
-  // Render cart items
-  const renderCartItems = () => {
-    if (cartItems.length === 0) {
-      return (
-        <View style={styles.emptyCart}>
-          <View style={styles.emptyCartIcon}>
-            <Text style={styles.emptyCartEmoji}>🛒</Text>
-          </View>
-          <Text style={styles.emptyCartTitle}>Your cart is empty</Text>
-          <Text style={styles.emptyCartText}>Add some items to get started</Text>
-          <TouchableOpacity 
-            style={styles.continueShoppingBtn}
-            onPress={() => navigation.navigate("Category")}
+  // Clear Cart Modal Component
+  const ClearCartModal = ({ visible, onClose, onConfirm }) => {
+    const slideAnim = useRef(new Animated.Value(height)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (visible) {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            tension: 100,
+            friction: 10,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: height,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }, [visible]);
+
+    if (!visible) return null;
+
+    return (
+      <Modal
+        transparent={true}
+        animationType="none"
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+          <Animated.View 
+            style={[
+              styles.clearModalContainer, 
+              { transform: [{ translateY: slideAnim }] }
+            ]}
           >
-            <Text style={styles.continueShoppingText}>Start Shopping</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+            {/* Header */}
+            <View style={styles.clearModalHeader}>
+              <View style={styles.clearModalIconContainer}>
+                <AlertCircle size={30} color="#FF6B00" />
+              </View>
+              <TouchableOpacity 
+                style={styles.clearModalCloseBtn}
+                onPress={onClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={22} color="#666" />
+              </TouchableOpacity>
+            </View>
 
-    return cartItems.map((item, index) => {
-      const itemPrice = getItemPrice(item);
-      const discount = item.discount || 0;
-      const imageUrl = getProductImageUrl(item);
-      
-      console.log(`Rendering cart item ${index}:`, {
-        name: item.name,
-        price: itemPrice,
-        imageUrl: imageUrl
-      });
-      
-      return (
-        <TouchableOpacity
-          key={`${item._id}_${index}_${item.selectedVariant?.label || 'default'}`}
-          style={styles.cartItem}
-          onPress={() => handleProductClick(item)}
-          activeOpacity={0.7}
-        >
-          {/* Product Image */}
-          <View style={styles.imageContainer}>
-            <Image 
-              source={{ 
-                uri: imageUrl,
-                cache: 'force-cache'
-              }} 
-              style={styles.productImage}
-              resizeMode="contain"
-            />
-          </View>
-
-          <View style={styles.itemDetails}>
-            <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-            {item.selectedVariant?.label && (
-              <Text style={styles.itemVariant}>{item.selectedVariant.label}</Text>
-            )}
-            <Text style={styles.itemDescription}>{item.quantity || 1} Pack</Text>
-
-            <View style={styles.itemPricing}>
-              <Text style={styles.currentPrice}>
-                ₹{itemPrice.toFixed(2)}
+            {/* Content */}
+            <View style={styles.clearModalContent}>
+              <Text style={styles.clearModalTitle}>Clear Cart</Text>
+              <Text style={styles.clearModalDescription}>
+                Are you sure you want to remove all items from your cart? This action cannot be undone.
               </Text>
-              {discount > 0 && (
-                <Text style={styles.discount}>
-                  {Math.round(discount)}% OFF
-                </Text>
-              )}
             </View>
-          </View>
 
-          <View style={styles.itemActions}>
-            <View style={styles.quantityControls}>
+            {/* Buttons */}
+            <View style={styles.clearModalButtons}>
               <TouchableOpacity
-                style={[styles.quantityBtn, (item.quantity || 1) <= 1 && styles.disabledBtn]}
-                onPress={(e) => handleQuantityChange(item._id, (item.quantity || 1) - 1, e)}
-                disabled={(item.quantity || 1) <= 1}
+                style={styles.clearModalCancelBtn}
+                onPress={onClose}
+                activeOpacity={0.8}
               >
-                <Text style={styles.quantityBtnText}>-</Text>
+                <Text style={styles.clearModalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <Text style={styles.quantity}>{item.quantity || 1}</Text>
+              
               <TouchableOpacity
-                style={styles.quantityBtn}
-                onPress={(e) => handleQuantityChange(item._id, (item.quantity || 1) + 1, e)}
+                style={styles.clearModalConfirmBtn}
+                onPress={onConfirm}
+                activeOpacity={0.8}
               >
-                <Text style={styles.quantityBtnText}>+</Text>
+                <LinearGradient
+                  colors={['#FF6B00', '#FF8E53']}
+                  style={styles.clearModalGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.clearModalConfirmText}>Clear All</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              style={styles.removeBtn}
-              onPress={(e) => handleRemoveItem(item._id, item.name, e)}
-            >
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+    );
+  };
 
-              <Text style={styles.removeBtnText}>Remove</Text>
+  // Remove Item Modal Component
+  const RemoveItemModal = ({ visible, onClose, onConfirm, itemName }) => {
+    const slideAnim = useRef(new Animated.Value(height)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (visible) {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            tension: 100,
+            friction: 10,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: height,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }, [visible]);
+
+    if (!visible) return null;
+
+    return (
+      <Modal
+        transparent={true}
+        animationType="none"
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <Animated.View style={[styles.modalOverlay, { opacity: fadeAnim }]}>
+          <Animated.View 
+            style={[
+              styles.removeModalContainer, 
+              { transform: [{ translateY: slideAnim }] }
+            ]}
+          >
+            {/* Header */}
+            <View style={styles.removeModalHeader}>
+              <View style={styles.removeModalIconContainer}>
+                <AlertCircle size={30} color="#FF6B00" />
+              </View>
+              <TouchableOpacity 
+                style={styles.removeModalCloseBtn}
+                onPress={onClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={22} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content */}
+            <View style={styles.removeModalContent}>
+              <Text style={styles.removeModalTitle}>Remove Item</Text>
+              <Text style={styles.removeModalDescription}>
+                Are you sure you want to remove "{itemName}" from your cart?
+              </Text>
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.removeModalButtons}>
+              <TouchableOpacity
+                style={styles.removeModalCancelBtn}
+                onPress={onClose}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.removeModalCancelText}>Keep Item</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.removeModalConfirmBtn}
+                onPress={onConfirm}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#FF4444', '#FF6B6B']}
+                  style={styles.removeModalGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.removeModalConfirmText}>Remove</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+    );
+  };
+
+  // Success Modal for COD Orders
+  const SuccessModal = ({ visible, message, onClose }) => {
+    const scaleAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+      if (visible) {
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }).start();
+      } else {
+        scaleAnim.setValue(0);
+      }
+    }, [visible]);
+
+    if (!visible) return null;
+
+    return (
+      <Modal transparent visible={visible} animationType="fade">
+        <View style={styles.successModalOverlay}>
+          <Animated.View style={[styles.successModalContent, { transform: [{ scale: scaleAnim }] }]}>
+            <View style={styles.successIconContainer}>
+              <CheckCircle size={60} color="#4CAF50" />
+            </View>
+            <Text style={styles.successModalTitle}>Order Placed Successfully!</Text>
+            <Text style={styles.successModalMessage}>{message}</Text>
+            <TouchableOpacity style={styles.successModalButton} onPress={onClose}>
+              <Text style={styles.successModalButtonText}>OK</Text>
             </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      );
-    });
+          </Animated.View>
+        </View>
+      </Modal>
+    );
   };
 
   if (loading && cartItems.length === 0) {
     return (
-       <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-   <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+      <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+        <StatusBar backgroundColor="#fff" barStyle="dark-content" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FF6B00" />
           <Text style={styles.loadingText}>Loading your cart...</Text>
@@ -2307,8 +2088,9 @@ const renderProductDetails = () => {
   }
 
   return (
-   <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
-         <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top }]}>
+      <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+      
       <ClearCartModal
         visible={showClearCartModal}
         onClose={() => setShowClearCartModal(false)}
@@ -2327,8 +2109,12 @@ const renderProductDetails = () => {
         itemName={itemNameToRemove}
       />
       
-      {/* Product Details Modal */}
-      {renderProductDetails()}
+      {/* Success Modal */}
+      <SuccessModal
+        visible={showSuccessModal}
+        message={successMessage}
+        onClose={() => setShowSuccessModal(false)}
+      />
       
       {/* Processing Loader */}
       {renderProcessingLoader()}
@@ -2342,9 +2128,6 @@ const renderProductDetails = () => {
       {/* Address Modal */}
       {renderAddressModal()}
       
-      {/* Header */}
-     
-
       {/* Login Prompt */}
       {!isAuthenticated && (
         <View style={styles.loginPrompt}>
@@ -2360,7 +2143,14 @@ const renderProductDetails = () => {
         {/* Cart Items */}
         <View style={styles.cartItemsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Items ({cartItems.length})</Text>
+            <View style={styles.titleContainer}>
+              <Text style={styles.sectionTitle}>Your Items ({cartItems.length})</Text>
+              {isWholesaler && (
+                <View style={styles.wholesaleTag}>
+                  <Text style={styles.wholesaleTagText}>Wholesale</Text>
+                </View>
+              )}
+            </View>
             {cartItems.length > 0 && (
               <TouchableOpacity onPress={handleClearCart}>
                 <Text style={styles.clearCartText}>Clear Cart</Text>
@@ -2378,7 +2168,16 @@ const renderProductDetails = () => {
             {!isAuthenticated && (
               <View style={styles.guestNotice}>
                 <Text style={styles.guestNoticeText}>
-                  🎯 Guest Checkout Available! Enter your details below.
+                  🎯 Guest Checkout Available! Enter your details below to proceed without login.
+                </Text>
+              </View>
+            )}
+
+            {/* Wholesaler Note */}
+            {isWholesaler && (
+              <View style={styles.wholesalerNote}>
+                <Text style={styles.wholesalerNoteText}>
+                  📦 You are viewing wholesale prices. Payment will be processed at wholesale rates.
                 </Text>
               </View>
             )}
@@ -2405,12 +2204,65 @@ const renderProductDetails = () => {
               </Text>
             )}
 
+            {/* Payment Method Selection */}
+            <View style={styles.paymentMethodSection}>
+              <Text style={styles.sectionSubtitle}>💳 Payment Method</Text>
+              <View style={styles.paymentMethods}>
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodCard,
+                    paymentMethod === 'online' && styles.paymentMethodSelected
+                  ]}
+                  onPress={() => handlePaymentMethodChange('online')}
+                >
+                  <View style={styles.paymentMethodHeader}>
+                    <CreditCard size={20} color={paymentMethod === 'online' ? '#FF6B00' : '#666'} />
+                    <Text style={[
+                      styles.paymentMethodTitle,
+                      paymentMethod === 'online' && styles.paymentMethodTitleSelected
+                    ]}>Online Payment</Text>
+                  </View>
+                  <Text style={styles.paymentMethodDescription}>
+                    Pay securely with Razorpay
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.paymentMethodCard,
+                    paymentMethod === 'cod' && styles.paymentMethodSelected
+                  ]}
+                  onPress={() => handlePaymentMethodChange('cod')}
+                >
+                  <View style={styles.paymentMethodHeader}>
+                    <Wallet size={20} color={paymentMethod === 'cod' ? '#FF6B00' : '#666'} />
+                    <Text style={[
+                      styles.paymentMethodTitle,
+                      paymentMethod === 'cod' && styles.paymentMethodTitleSelected
+                    ]}>Cash on Delivery</Text>
+                  </View>
+                  <Text style={styles.paymentMethodDescription}>
+                    Pay when you receive your order
+                    <Text style={styles.codChargeText}> + ₹{codCharge} COD charge</Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Order Summary Details */}
             <View style={styles.summaryDetails}>
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Subtotal ({cartItems.length} items)</Text>
-                <Text style={styles.summaryValue}>₹{totalPrice.toFixed(2)}</Text>
+                <Text style={styles.summaryValue}>₹{baseTotal.toFixed(2)}</Text>
               </View>
+              
+              {paymentMethod === 'cod' && (
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryLabel}>COD Charge</Text>
+                  <Text style={styles.summaryValue}>+ ₹{codCharge.toFixed(2)}</Text>
+                </View>
+              )}
+              
               <View style={styles.summaryRow}>
                 <Text style={styles.summaryLabel}>Shipping</Text>
                 <Text style={[styles.summaryValue, styles.freeShipping]}>FREE</Text>
@@ -2425,17 +2277,28 @@ const renderProductDetails = () => {
             
             <View style={styles.summaryTotal}>
               <Text style={styles.totalLabel}>Total</Text>
-              <Text style={styles.totalValue}>₹{totalPrice.toFixed(2)}</Text>
+              <Text style={styles.totalValue}>₹{finalTotal.toFixed(2)}</Text>
             </View>
+
+            {/* COD Note */}
+            {paymentMethod === 'cod' && (
+              <View style={styles.codNote}>
+                <Text style={styles.codNoteText}>
+                  💡 Note: You'll pay ₹{finalTotal.toFixed(2)} (including ₹{codCharge} COD charge) when your order is delivered.
+                </Text>
+              </View>
+            )}
 
             {/* Checkout Button */}
             <TouchableOpacity
               style={[
                 styles.checkoutBtn,
+                paymentMethod === 'cod' && styles.codCheckoutBtn,
                 (!formData.selectedAddress || 
                   checkoutLoading || 
                   paymentProcessing || 
                   isProcessing ||
+                  codProcessing ||
                   !formData.email ||
                   !isValidEmail(formData.email) ||
                   !formData.phone ||
@@ -2447,17 +2310,27 @@ const renderProductDetails = () => {
                 checkoutLoading || 
                 paymentProcessing || 
                 isProcessing ||
+                codProcessing ||
                 !formData.email ||
                 !isValidEmail(formData.email) ||
                 !formData.phone ||
                 formData.phone.length !== 10
               }
             >
-              {checkoutLoading || paymentProcessing || isProcessing ? (
+              {checkoutLoading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : paymentProcessing || isProcessing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : codProcessing ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
                 <Text style={styles.checkoutBtnText}>
-                  {isAuthenticated ? 'Proceed to Payment' : 'Proceed as Guest'}
+                  {paymentMethod === 'cod' 
+                    ? `Place COD Order (₹${finalTotal.toFixed(2)})`
+                    : isAuthenticated 
+                      ? 'Proceed to Payment' 
+                      : 'Proceed as Guest'
+                  }
                 </Text>
               )}
             </TouchableOpacity>
@@ -2465,7 +2338,7 @@ const renderProductDetails = () => {
             {/* Validation Warning */}
             {!isAuthenticated && (!formData.email || !isValidEmail(formData.email) || !formData.phone || formData.phone.length !== 10) && (
               <Text style={styles.validationWarning}>
-                ⚠️ Email and phone required for order confirmation
+                ⚠️ Email address and phone number are required for order confirmation
               </Text>
             )}
 
@@ -2482,12 +2355,6 @@ const renderProductDetails = () => {
                 </Text>
               </View>
             )}
-
-            {/* Security Badges */}
-            <View style={styles.securityBadges}>
-              <Text style={styles.badge}>🔒 Secure Payment</Text>
-              <Text style={styles.badge}>💳 Razorpay Verified</Text>
-            </View>
           </View>
         )}
       </ScrollView>
@@ -2495,7 +2362,7 @@ const renderProductDetails = () => {
   );
 };
 
-// Styles - Add Product Details Styles
+// Styles - Add new styles for payment methods and COD
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -2511,43 +2378,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#666',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  backButton: {
-    padding: 4,
-  },
-  backButtonText: {
-    fontSize: 24,
-    color: '#333',
-    fontWeight: 'bold',
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-  },
-  clearAllButton: {
-    padding: 8,
-  },
-  clearAllText: {
-    fontSize: 14,
-    color: '#d51c1c',
-    fontWeight: '600',
   },
   loginPrompt: {
     backgroundColor: '#e3f2fd',
@@ -2586,10 +2416,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+  },
+  wholesaleTag: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  wholesaleTagText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   clearCartText: {
     fontSize: 14,
@@ -2776,6 +2623,17 @@ const styles = StyleSheet.create({
     color: '#2e7d32',
     textAlign: 'center',
   },
+  wholesalerNote: {
+    backgroundColor: '#FFF3E0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  wholesalerNoteText: {
+    fontSize: 14,
+    color: '#E65100',
+    textAlign: 'center',
+  },
   addAddressBtn: {
     backgroundColor: '#FF6B00',
     paddingVertical: 12,
@@ -2853,6 +2711,47 @@ const styles = StyleSheet.create({
     marginVertical: 12,
     paddingVertical: 8,
   },
+  paymentMethodSection: {
+    marginBottom: 16,
+  },
+  paymentMethods: {
+    gap: 12,
+  },
+  paymentMethodCard: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#fafafa',
+  },
+  paymentMethodSelected: {
+    borderColor: '#FF6B00',
+    backgroundColor: '#e8eaf6',
+  },
+  paymentMethodHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  paymentMethodTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  paymentMethodTitleSelected: {
+    color: '#FF6B00',
+  },
+  paymentMethodDescription: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 28,
+  },
+  codChargeText: {
+    fontSize: 12,
+    color: '#FF6B00',
+    fontWeight: '600',
+  },
   summaryDetails: {
     marginVertical: 16,
   },
@@ -2883,7 +2782,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   totalLabel: {
     fontSize: 18,
@@ -2894,6 +2793,17 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FF6B00',
+  },
+  codNote: {
+    backgroundColor: '#FFF3E0',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  codNoteText: {
+    fontSize: 14,
+    color: '#E65100',
+    textAlign: 'center',
   },
   checkoutBtn: {
     backgroundColor: '#FF6B00',
@@ -2906,6 +2816,13 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  codCheckoutBtn: {
+    backgroundColor: '#2E7D32',
+  },
+  disabledBtn: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
   },
   checkoutBtnText: {
     color: '#fff',
@@ -2934,14 +2851,572 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textDecorationLine: 'underline',
   },
-  securityBadges: {
-    flexDirection: 'row',
+  
+  // Clear Cart Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
-    gap: 16,
+    alignItems: 'center',
+    padding: 20,
   },
-  badge: {
+  clearModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    position: 'absolute',
+    bottom: 0,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  clearModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  clearModalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearModalCloseBtn: {
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+  },
+  clearModalContent: {
+    marginBottom: 24,
+  },
+  clearModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  clearModalDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  clearModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  clearModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  clearModalCancelText: {
+    color: '#495057',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  clearModalConfirmBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  clearModalGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  clearModalConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Remove Item Modal Styles
+  removeModalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    position: 'absolute',
+    bottom: 0,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  removeModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  removeModalIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#FFF5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  removeModalCloseBtn: {
+    padding: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 20,
+  },
+  removeModalContent: {
+    marginBottom: 24,
+  },
+  removeModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  removeModalDescription: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  removeModalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  removeModalCancelBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  removeModalCancelText: {
+    color: '#495057',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  removeModalConfirmBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  removeModalGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+  },
+  removeModalConfirmText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Success Modal Styles
+  successModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 32,
+    width: '80%',
+    maxWidth: 400,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 10,
+  },
+  successIconContainer: {
+    marginBottom: 16,
+  },
+  successModalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  successModalMessage: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  successModalButton: {
+    backgroundColor: '#FF6B00',
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  successModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Processing Loader
+  processingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingModal: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    alignItems: 'center',
+  },
+  processingTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginVertical: 12,
+    textAlign: 'center',
+  },
+  processingMessage: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  processingProgress: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FF6B00',
+  },
+  progressSteps: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  stepText: {
     fontSize: 12,
     color: '#666',
+  },
+  processingNote: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  
+  // Dropdown Styles
+  dropdownOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  dropdownContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  dropdownTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  dropdownLoading: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  dropdownLoadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
+  },
+  dropdownScroll: {
+    maxHeight: 400,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dropdownEmpty: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  dropdownEmptyText: {
+    fontSize: 16,
+    color: '#999',
+    textAlign: 'center',
+  },
+  
+  // Modal Input Styles
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 6,
+    fontWeight: '500',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    backgroundColor: '#fff',
+  },
+  inputError: {
+    borderColor: '#f44336',
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#f44336',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 16,
+  },
+  pickerButton: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pickerText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  pickerPlaceholder: {
+    fontSize: 16,
+    color: '#999',
+  },
+  disabledPicker: {
+    backgroundColor: '#f5f5f5',
+    opacity: 0.6,
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  phonePrefix: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#f5f5f5',
+    borderRightWidth: 1,
+    borderRightColor: '#ddd',
+  },
+  phonePrefixText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+  },
+  requiredNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  requiredStar: {
+    color: '#d32f2f',
+    fontWeight: '700',
+    fontSize: 16,
+    marginRight: 4,
+  },
+  requiredText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  guestInfoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d1ecf1',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#bee5eb',
+  },
+  guestInfoIcon: {
+    fontSize: 16,
+    color: '#0c5460',
+    marginRight: 8,
+  },
+  guestInfoText: {
+    fontSize: 14,
+    color: '#0c5460',
+    flex: 1,
+  },
+  guestInfoBold: {
+    fontWeight: 'bold',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 24,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 8,
+    backgroundColor: '#FF6B00',
+    alignItems: 'center',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   
   // Product Details Styles
@@ -3078,7 +3553,7 @@ const styles = StyleSheet.create({
   },
   deliveryText: {
     fontSize: 12,
-    color: '#FF6B00',
+    color: '#4CAF50',
     marginLeft: 4,
     fontWeight: '500',
   },
@@ -3368,555 +3843,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     opacity: 0.9,
-  },
-  
-  // Processing Loader
-  processingOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  processingModal: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    width: '85%',
-    alignItems: 'center',
-  },
-  processingTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    marginVertical: 12,
-    textAlign: 'center',
-  },
-  processingMessage: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  processingProgress: {
-    width: '100%',
-    marginBottom: 24,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FF6B00',
-  },
-  progressSteps: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  stepText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  processingNote: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  
-  // Dropdown Styles
-  dropdownOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  dropdownContainer: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-  },
-  dropdownHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  dropdownTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  dropdownLoading: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  dropdownLoadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
-  },
-  dropdownScroll: {
-    maxHeight: 400,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  dropdownItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  dropdownEmpty: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  dropdownEmptyText: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-  },
-  
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: '100%',
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    marginBottom: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  modalScroll: {
-    maxHeight: 400,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 6,
-    fontWeight: '500',
-  },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#f44336',
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#f44336',
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  helperText: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    marginBottom: 16,
-  },
-  pickerButton: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pickerText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  pickerPlaceholder: {
-    fontSize: 16,
-    color: '#999',
-  },
-  disabledPicker: {
-    backgroundColor: '#f5f5f5',
-    opacity: 0.6,
-  },
-  phoneInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  phonePrefix: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    backgroundColor: '#f5f5f5',
-    borderRightWidth: 1,
-    borderRightColor: '#ddd',
-  },
-  phonePrefixText: {
-    fontSize: 16,
-    color: '#666',
-    fontWeight: '500',
-  },
-  phoneInput: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333',
-  },
-  requiredNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  requiredStar: {
-    color: '#d32f2f',
-    fontWeight: '700',
-    fontSize: 16,
-    marginRight: 4,
-  },
-  requiredText: {
-    fontSize: 12,
-    color: '#666',
-  },
-  guestInfoNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#d1ecf1',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#bee5eb',
-  },
-  guestInfoIcon: {
-    fontSize: 16,
-    color: '#0c5460',
-    marginRight: 8,
-  },
-  guestInfoText: {
-    fontSize: 14,
-    color: '#0c5460',
-    flex: 1,
-  },
-  guestInfoBold: {
-    fontWeight: 'bold',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#fff',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  saveButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 8,
-    backgroundColor: '#FF6B00',
-    alignItems: 'center',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  
-  // Clear Cart Modal Styles
-  clearModalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    position: 'absolute',
-    bottom: 0,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 10,
-  },
-  clearModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  clearModalIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  clearModalCloseBtn: {
-    padding: 8,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-  },
-  clearModalContent: {
-    marginBottom: 24,
-  },
-  clearModalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  clearModalDescription: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  clearModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  clearModalCancelBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  clearModalCancelText: {
-    color: '#495057',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  clearModalConfirmBtn: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  clearModalGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  clearModalBtnIcon: {
-    marginRight: 8,
-  },
-  clearModalConfirmText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  
-  // Remove Item Modal Styles
-  removeModalContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 24,
-    width: '90%',
-    maxWidth: 400,
-    alignSelf: 'center',
-    position: 'absolute',
-    bottom: 0,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 10,
-  },
-  removeModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  removeModalIconContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#FFF5F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  removeModalCloseBtn: {
-    padding: 8,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 20,
-  },
-  removeModalContent: {
-    marginBottom: 24,
-  },
-  removeModalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  removeModalDescription: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  removeModalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  removeModalCancelBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#F8F9FA',
-    borderWidth: 1,
-    borderColor: '#E9ECEF',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  removeModalCancelText: {
-    color: '#495057',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  removeModalConfirmBtn: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  removeModalGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-  },
-  removeModalBtnIcon: {
-    marginRight: 8,
-  },
-  removeModalConfirmText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

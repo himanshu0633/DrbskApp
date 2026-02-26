@@ -965,6 +965,25 @@
             "outputFile": "com.cupid_cakes.app-debug-48:/values-sw600dp-v13_values-sw600dp-v13.arsc.flat",
             "map": [
                 {
+                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/60cd5df961349d78fed4a9d5a2fa3a2f/transformed/standard-core-1.7.8/res/values-sw600dp-v13/values-sw600dp-v13.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,93",
+                        "endLines": "2,15",
+                        "endColumns": "37,12",
+                        "endOffsets": "88,871"
+                    },
+                    "to": {
+                        "startLines": "2,23",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,1389",
+                        "endLines": "2,35",
+                        "endColumns": "37,12",
+                        "endOffsets": "88,2167"
+                    }
+                },
+                {
                     "source": "/Users/himanshu/.gradle/caches/8.12/transforms/938c56a13f98ce28c237369f349cafdc/transformed/material-1.6.1/res/values-sw600dp-v13/values-sw600dp-v13.xml",
                     "from": {
                         "startLines": "2,3,4,5,6,7,8,10,11,12,13,14",
@@ -998,25 +1017,6 @@
                         "startOffsets": "93,162,231,301,375,451,510,581",
                         "endColumns": "68,68,69,73,75,58,70,67",
                         "endOffsets": "157,226,296,370,446,505,576,644"
-                    }
-                },
-                {
-                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/c6406c97cc50c76a152f8547b41874f8/transformed/standard-core-1.7.7/res/values-sw600dp-v13/values-sw600dp-v13.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,93",
-                        "endLines": "2,15",
-                        "endColumns": "37,12",
-                        "endOffsets": "88,871"
-                    },
-                    "to": {
-                        "startLines": "2,23",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,1389",
-                        "endLines": "2,35",
-                        "endColumns": "37,12",
-                        "endOffsets": "88,2167"
                     }
                 }
             ]
@@ -4211,6 +4211,25 @@
                     }
                 },
                 {
+                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/47b1d00109b6d6478ca3b158ef552209/transformed/core-1.0.8/res/values/values.xml",
+                    "from": {
+                        "startLines": "2,3",
+                        "startColumns": "4,4",
+                        "startOffsets": "55,94",
+                        "endLines": "2,19",
+                        "endColumns": "38,12",
+                        "endOffsets": "89,673"
+                    },
+                    "to": {
+                        "startLines": "478,4796",
+                        "startColumns": "4,4",
+                        "startOffsets": "23924,326469",
+                        "endLines": "478,4812",
+                        "endColumns": "38,12",
+                        "endOffsets": "23958,327048"
+                    }
+                },
+                {
                     "source": "/Users/himanshu/.gradle/caches/8.12/transforms/c7216569b7010aa6dfc52379b857b752/transformed/play-services-basement-18.3.0/res/values/values.xml",
                     "from": {
                         "startLines": "4,7",
@@ -4280,25 +4299,6 @@
                         "startOffsets": "96752",
                         "endColumns": "82",
                         "endOffsets": "96830"
-                    }
-                },
-                {
-                    "source": "/Users/himanshu/.gradle/caches/8.12/transforms/a1f7147bc296513a556b75fab76729ed/transformed/core-1.0.6/res/values/values.xml",
-                    "from": {
-                        "startLines": "2,3",
-                        "startColumns": "4,4",
-                        "startOffsets": "55,94",
-                        "endLines": "2,19",
-                        "endColumns": "38,12",
-                        "endOffsets": "89,673"
-                    },
-                    "to": {
-                        "startLines": "478,4796",
-                        "startColumns": "4,4",
-                        "startOffsets": "23924,326469",
-                        "endLines": "478,4812",
-                        "endColumns": "38,12",
-                        "endOffsets": "23958,327048"
                     }
                 },
                 {
