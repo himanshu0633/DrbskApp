@@ -16,6 +16,7 @@ import {
   RefreshControl,
   Platform,
   FlatList,
+  Share,
 } from 'react-native';
 import {
   ArrowLeft,
@@ -37,6 +38,9 @@ import {
   Package,
   Truck,
   RotateCcw,
+  Share2,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
 } from 'lucide-react-native';
 import axiosInstance from '../../Components/AxiosInstance';
 import API_URL from '../../../config';
@@ -52,9 +56,7 @@ const { width, height } = Dimensions.get('window');
 
 function toNum(x, fallback = 0) {
   if (x === null || x === undefined || x === '') return fallback;
-  // If it's already a number, return it
   if (typeof x === 'number') return x;
-  // If it's a string, clean it and parse
   const n = parseFloat(String(x).toString().replace(/[^0-9.\-]/g, ''));
   return Number.isFinite(n) ? n : fallback;
 }
@@ -66,17 +68,13 @@ function parseVariants(raw) {
     
     let parsed = [];
 
-    // Handle your specific data structure: quantity is an array containing an array
     if (Array.isArray(raw) && raw.length > 0) {
-      // Check if first element is an array (your case)
       if (Array.isArray(raw[0]) && raw[0].length > 0) {
-        // This handles: quantity: [ [ {...} ] ]
         const innerArray = raw[0];
         if (typeof innerArray[0] === 'object') {
           parsed = innerArray;
         }
       } 
-      // Check if first element is a string that needs parsing
       else if (typeof raw[0] === 'string') {
         try {
           const parsedString = JSON.parse(raw[0]);
@@ -89,12 +87,10 @@ function parseVariants(raw) {
           console.warn('Failed to parse stringified quantity:', e);
         }
       }
-      // Check if first element is an object (direct array of variants)
       else if (typeof raw[0] === 'object') {
         parsed = raw;
       }
     } 
-    // Handle if raw is a string
     else if (typeof raw === 'string') {
       try {
         const parsedJSON = JSON.parse(raw);
@@ -107,12 +103,10 @@ function parseVariants(raw) {
         console.warn('Failed to parse string quantity:', e);
       }
     }
-    // Handle if raw is already an object
     else if (typeof raw === 'object' && raw !== null) {
       parsed = [raw];
     }
 
-    // Map each variant to ensure proper types
     const mappedVariants = (parsed || []).map(v => ({
       label: (v.label || '').trim(),
       mrp: toNum(v.mrp),
@@ -160,12 +154,10 @@ function calculateDiscountPercent(variant) {
   const mrp = toNum(variant.mrp);
   const finalPrice = toNum(variant.final_price || variant.retail_price);
   
-  // If discount is directly provided
   if (variant.discount > 0) {
     return Math.round(toNum(variant.discount));
   }
   
-  // Calculate discount from MRP and final price
   if (mrp > 0 && finalPrice > 0 && mrp > finalPrice) {
     return Math.round(((mrp - finalPrice) / mrp) * 100);
   }
@@ -211,14 +203,12 @@ function normalizeProduct(p) {
   let originalPrice = 0;
   let discountPercent = 0;
   
-  // Use product-level prices as fallback
   const productRetailPrice = toNum(p.retail_price);
   const productConsumerPrice = toNum(p.consumer_price);
   const productMrp = toNum(p.mrp);
   const productDiscount = toNum(p.discount);
   
   if (variants.length > 0) {
-    // Find variant with lowest price
     const minVar = variants.reduce((acc, v) => {
       const vPrice = v.final_price || v.retail_price || 0;
       const aPrice = acc.final_price || acc.retail_price || 0;
@@ -229,12 +219,10 @@ function normalizeProduct(p) {
     originalPrice = toNum(minVar.mrp);
     discountPercent = calculateDiscountPercent(minVar);
   } else {
-    // Use product-level prices
     price = productConsumerPrice || productRetailPrice;
     originalPrice = productMrp || price;
     discountPercent = productDiscount;
     
-    // Calculate discount if not provided
     if (discountPercent === 0 && originalPrice > price) {
       discountPercent = Math.round(((originalPrice - price) / originalPrice) * 100);
     }
@@ -251,7 +239,6 @@ function normalizeProduct(p) {
     discount_value: productDiscount,
     gst: toNum(p.gst),
     mrp: productMrp,
-    // Ensure stock status from variants or product level
     in_stock: variants.length > 0 
       ? variants.some(v => v.in_stock)
       : p.stock?.toLowerCase() === 'yes' || p.stock === true
@@ -572,6 +559,192 @@ const Header = ({ navigation, cartCount }) => {
   );
 };
 
+/* --------------------------- Image Gallery Modal Component -------------------------- */
+
+const ImageGalleryModal = ({ visible, images, initialIndex = 0, onClose }) => {
+  const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  const scrollViewRef = useRef(null);
+
+  useEffect(() => {
+    if (visible && scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({
+        x: currentIndex * width,
+        animated: false,
+      });
+    }
+  }, [visible, currentIndex]);
+
+  const handleScroll = (event) => {
+    const index = Math.round(event.nativeEvent.contentOffset.x / width);
+    setCurrentIndex(index);
+  };
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: 'Check out this product on our app!',
+        url: images[currentIndex]?.uri,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.galleryModalContainer}>
+        <View style={styles.galleryHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.galleryCloseButton}>
+            <X size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.galleryCounter}>
+            {currentIndex + 1} / {images.length}
+          </Text>
+          <TouchableOpacity onPress={handleShare} style={styles.galleryShareButton}>
+            <Share2 size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          ref={scrollViewRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          {images.map((image, index) => (
+            <View key={index} style={[styles.galleryImageContainer, { width }]}>
+              <Image
+                source={{ uri: image.uri }}
+                style={styles.galleryImage}
+                resizeMode="contain"
+              />
+            </View>
+          ))}
+        </ScrollView>
+
+        {images.length > 1 && (
+          <>
+            <TouchableOpacity
+              style={[styles.galleryNavButton, styles.galleryNavLeft]}
+              onPress={() => {
+                const newIndex = Math.max(0, currentIndex - 1);
+                setCurrentIndex(newIndex);
+                scrollViewRef.current?.scrollTo({
+                  x: newIndex * width,
+                  animated: true,
+                });
+              }}
+              disabled={currentIndex === 0}
+            >
+              <ChevronLeft size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.galleryNavButton, styles.galleryNavRight]}
+              onPress={() => {
+                const newIndex = Math.min(images.length - 1, currentIndex + 1);
+                setCurrentIndex(newIndex);
+                scrollViewRef.current?.scrollTo({
+                  x: newIndex * width,
+                  animated: true,
+                });
+              }}
+              disabled={currentIndex === images.length - 1}
+            >
+              <ChevronRightIcon size={24} color="#fff" />
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </Modal>
+  );
+};
+
+/* --------------------------- Thumbnail Gallery Component -------------------------- */
+
+const ThumbnailGallery = ({ images, onImagePress, onShare }) => {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
+  if (!images || images.length === 0) {
+    return (
+      <View style={styles.noImageContainer}>
+        <Package size={60} color="#ccc" />
+        <Text style={styles.noImageText}>No image available</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.thumbnailGalleryContainer}>
+      {/* Main Image */}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={() => onImagePress(selectedIndex)}
+        style={styles.mainImageContainer}
+      >
+        <Image
+          source={{ uri: images[selectedIndex]?.uri }}
+          style={styles.mainImage}
+          resizeMode="contain"
+        />
+        
+        {/* Share Button Overlay */}
+        <TouchableOpacity
+          style={styles.shareButtonOverlay}
+          onPress={onShare}
+          activeOpacity={0.7}
+        >
+          <Share2 size={20} color="#fff" />
+        </TouchableOpacity>
+
+        {/* Image Counter */}
+        {images.length > 1 && (
+          <View style={styles.imageCounter}>
+            <Text style={styles.imageCounterText}>
+              {selectedIndex + 1}/{images.length}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      {/* Thumbnail Strip */}
+      {images.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.thumbnailStrip}
+          contentContainerStyle={styles.thumbnailStripContent}
+        >
+          {images.map((image, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => setSelectedIndex(index)}
+              style={[
+                styles.thumbnailButton,
+                selectedIndex === index && styles.thumbnailButtonSelected,
+              ]}
+            >
+              <Image
+                source={{ uri: image.uri }}
+                style={styles.thumbnailImage}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+};
+
 /* -------------------------------- Main Component -------------------------------- */
 
 export default function ProductsPage({ navigation, route }) {
@@ -598,6 +771,8 @@ export default function ProductsPage({ navigation, route }) {
   const [showSortModal, setShowSortModal] = useState(false);
   const [error, setError] = useState(null);
   const [imageLoaded, setImageLoaded] = useState({});
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [galleryImages, setGalleryImages] = useState([]);
 
   const cartItems = useSelector((state) => state?.app?.data || []);
   const cartCount = cartItems.length;
@@ -765,10 +940,17 @@ export default function ProductsPage({ navigation, route }) {
     const normalized = normalizeProduct(product);
     setSelectedProduct(normalized);
     
-    const imageUrl = normalized?.media?.length > 0 
-      ? `${API_URL}${normalized.media[0].url}`
-      : null;
-    setMainImage(imageUrl);
+    // Prepare gallery images
+    if (normalized?.media?.length > 0) {
+      const images = normalized.media.map(media => ({
+        uri: `${API_URL}${media.url}`,
+      }));
+      setGalleryImages(images);
+      setMainImage(images[0]?.uri || null);
+    } else {
+      setGalleryImages([]);
+      setMainImage(null);
+    }
     
     // Set default selected quantity from first in-stock variant
     const availableVariant = normalized?.variants?.find(v => v.in_stock);
@@ -776,6 +958,30 @@ export default function ProductsPage({ navigation, route }) {
     
     setShowProductDetails(true);
   }, []);
+
+  /* --------------------- Share Function -------------------- */
+
+  const handleShare = useCallback(async (product) => {
+    try {
+      const price = getDisplayPrice(product, selectedQuantity);
+      const message = `Check out ${product.name} on our app!\nPrice: ₹${price.toFixed(2)}\n${product.description || ''}\n\nDownload our app to shop!`;
+      
+      await Share.share({
+        message,
+        title: product.name,
+        url: mainImage || undefined,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Sharing Failed',
+        text2: 'Unable to share product at this moment',
+        position: 'bottom',
+        visibilityTime: 3000,
+      });
+    }
+  }, [selectedQuantity, mainImage]);
 
   /* --------------------- Add to Cart Functions -------------------- */
 
@@ -1120,55 +1326,50 @@ export default function ProductsPage({ navigation, route }) {
 
     return (
       <View style={styles.productDetailsContainer}>
-        <View style={styles.header}>
-      <View style={styles.headerContent}>
-        {/* Left: Back Button */}
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => setShowProductDetails(false)} 
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <ArrowLeft size={24} color="#333" />
-        </TouchableOpacity>
-        
-        {/* Center: Header Title */}
-        <Text style={styles.headerTitle}>Products Details</Text>
-        
-        {/* Right: Cart Button */}
-        <TouchableOpacity 
-          style={[styles.iconButton, styles.cartButton]}
-          onPress={() => navigation.navigate('Cart')}
-        >
-          <ShoppingBag size={rs(20)} color="#333" />
-          {cartCount > 0 && (
-            <View style={styles.cartBadge}>
-              <Text style={styles.badgeText}>
-                {cartCount > 9 ? '9+' : cartCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
+        <View style={styles.detailsHeader}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => setShowProductDetails(false)} 
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <ArrowLeft size={24} color="#333" />
+          </TouchableOpacity>
+          
+          <Text style={styles.detailsTitle}>Product Details</Text>
+          
+          <View style={styles.headerButtons}>
+      
+            
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => navigateToCart()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <ShoppingBag size={22} color="#333" />
+              {cartCount > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.badgeText}>
+                    {cartCount > 9 ? '9+' : cartCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <ScrollView 
           style={styles.detailsContent}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.imageGallery}>
-            {mainImage ? (
-              <Image 
-                source={{ uri: mainImage }} 
-                style={styles.detailsImage} 
-                resizeMode="contain" 
-              />
-            ) : (
-              <View style={styles.noImageContainer}>
-                <Package size={60} color="#ccc" />
-                <Text style={styles.noImageText}>No image available</Text>
-              </View>
-            )}
-          </View>
+          {/* Image Gallery */}
+          <ThumbnailGallery
+            images={galleryImages}
+            onImagePress={(index) => {
+              setGalleryImages(galleryImages); // Ensure we have the latest
+              setShowGalleryModal(true);
+            }}
+            onShare={() => handleShare(selectedProduct)}
+          />
 
           <View style={styles.detailsInfoContainer}>
             <View style={styles.productHeaderDetails}>
@@ -1419,148 +1620,156 @@ export default function ProductsPage({ navigation, route }) {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* Image Gallery Modal */}
+        <ImageGalleryModal
+          visible={showGalleryModal}
+          images={galleryImages}
+          initialIndex={0}
+          onClose={() => setShowGalleryModal(false)}
+        />
       </View>
     );
   };
 
   /* ---------------------------- Success Modal ---------------------------- */
 
-//  const renderSuccessModal = () => {
-//   const scaleAnim = useRef(new Animated.Value(0)).current;
-//   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const renderSuccessModal = () => {
+    const scaleAnim = useRef(new Animated.Value(0)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
 
-//   useEffect(() => {
-//     if (showSuccessModal) {
-//       Animated.parallel([
-//         Animated.spring(scaleAnim, {
-//           toValue: 1,
-//           tension: 50,
-//           friction: 7,
-//           useNativeDriver: true,
-//         }),
-//         Animated.timing(opacityAnim, {
-//           toValue: 1,
-//           duration: 200,
-//           useNativeDriver: true,
-//         }),
-//       ]).start();
-//     } else {
-//       scaleAnim.setValue(0);
-//       opacityAnim.setValue(0);
-//     }
-//   }, [showSuccessModal]);
+    useEffect(() => {
+      if (showSuccessModal) {
+        Animated.parallel([
+          Animated.spring(scaleAnim, {
+            toValue: 1,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      } else {
+        scaleAnim.setValue(0);
+        opacityAnim.setValue(0);
+      }
+    }, [showSuccessModal]);
 
-//   return (
-//     <Modal
-//       animationType="fade"
-//       transparent={true}
-//       visible={showSuccessModal}
-//       onRequestClose={() => setShowSuccessModal(false)}
-//       statusBarTranslucent
-//     >
-//       <Animated.View 
-//         style={[
-//           styles.successModalOverlay,
-//           { opacity: opacityAnim }
-//         ]}
-//       >
-//         <Animated.View 
-//           style={[
-//             styles.successModal,
-//             {
-//               transform: [
-//                 { scale: scaleAnim },
-//                 {
-//                   translateY: scaleAnim.interpolate({
-//                     inputRange: [0, 1],
-//                     outputRange: [50, 0],
-//                   }),
-//                 },
-//               ],
-//             },
-//           ]}
-//         >
-//           <View style={styles.successModalContent}>
-//             {/* Success Icon with Pulse Animation */}
-//             <View style={styles.successIconWrapper}>
-//               <Animated.View 
-//                 style={[
-//                   styles.successIconContainer,
-//                   {
-//                     transform: [{
-//                       scale: scaleAnim.interpolate({
-//                         inputRange: [0, 0.5, 1],
-//                         outputRange: [0, 1.2, 1],
-//                       }),
-//                     }],
-//                   },
-//                 ]}
-//               >
-//                 <CheckCircle size={60} color="#10b981" />
-//               </Animated.View>
-//             </View>
+    return (
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSuccessModal}
+        onRequestClose={() => setShowSuccessModal(false)}
+        statusBarTranslucent
+      >
+        <Animated.View 
+          style={[
+            styles.successModalOverlay,
+            { opacity: opacityAnim }
+          ]}
+        >
+          <Animated.View 
+            style={[
+              styles.successModal,
+              {
+                transform: [
+                  { scale: scaleAnim },
+                  {
+                    translateY: scaleAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [50, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.successModalContent}>
+              {/* Success Icon with Pulse Animation */}
+              <View style={styles.successIconWrapper}>
+                <Animated.View 
+                  style={[
+                    styles.successIconContainer,
+                    {
+                      transform: [{
+                        scale: scaleAnim.interpolate({
+                          inputRange: [0, 0.5, 1],
+                          outputRange: [0, 1.2, 1],
+                        }),
+                      }],
+                    },
+                  ]}
+                >
+                  <CheckCircle size={60} color="#10b981" />
+                </Animated.View>
+              </View>
 
-//             {/* Text Content */}
-//             <Text style={styles.successModalTitle}>Success! 🎉</Text>
-//             <Text style={styles.successModalMessage}>
-//               <Text style={styles.successProductName}>{addedProductName}</Text>
-//               {'\n'}has been added to your cart
-//             </Text>
+              {/* Text Content */}
+              <Text style={styles.successModalTitle}>Success! 🎉</Text>
+              <Text style={styles.successModalMessage}>
+                <Text style={styles.successProductName}>{addedProductName}</Text>
+                {'\n'}has been added to your cart
+              </Text>
 
-//             {/* Action Buttons */}
-//             <View style={styles.successModalButtons}>
-//               <TouchableOpacity 
-//                 style={styles.continueButton}
-//                 onPress={() => {
-//                   Animated.timing(opacityAnim, {
-//                     toValue: 0,
-//                     duration: 150,
-//                     useNativeDriver: true,
-//                   }).start(() => setShowSuccessModal(false));
-//                 }}
-//                 activeOpacity={0.7}
-//               >
-//                 <Text style={styles.continueButtonText}>Continue Shopping</Text>
-//               </TouchableOpacity>
-              
-//               <TouchableOpacity 
-//                 style={styles.viewCartButton}
-//                 onPress={() => {
-//                   Animated.timing(opacityAnim, {
-//                     toValue: 0,
-//                     duration: 150,
-//                     useNativeDriver: true,
-//                   }).start(() => {
-//                     setShowSuccessModal(false);
-//                     navigateToCart();
-//                   });
-//                 }}
-//                 activeOpacity={0.7}
-//               >
-//                 <ShoppingBag size={18} color="#fff" />
-//                 <Text style={styles.viewCartButtonText}>
-//                   View Cart 
-//                   {cartCount > 0 && (
-//                     <Text style={styles.viewCartButtonCount}> ({cartCount})</Text>
-//                   )}
-//                 </Text>
-//               </TouchableOpacity>
-//             </View>
+              {/* Action Buttons */}
+              <View style={styles.successModalButtons}>
+                <TouchableOpacity 
+                  style={styles.continueButton}
+                  onPress={() => {
+                    Animated.timing(opacityAnim, {
+                      toValue: 0,
+                      duration: 150,
+                      useNativeDriver: true,
+                    }).start(() => setShowSuccessModal(false));
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.continueButtonText}>Continue Shopping</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.viewCartButton}
+                  onPress={() => {
+                    Animated.timing(opacityAnim, {
+                      toValue: 0,
+                      duration: 150,
+                      useNativeDriver: true,
+                    }).start(() => {
+                      setShowSuccessModal(false);
+                      navigateToCart();
+                    });
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <ShoppingBag size={18} color="#fff" />
+                  <Text style={styles.viewCartButtonText}>
+                    View Cart 
+                    {cartCount > 0 && (
+                      <Text style={styles.viewCartButtonCount}> ({cartCount})</Text>
+                    )}
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-//             {/* Close Button (Optional) */}
-//             <TouchableOpacity 
-//               style={styles.closeButton}
-//               onPress={() => setShowSuccessModal(false)}
-//               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-//             >
-//               <X size={20} color="#9ca3af" />
-//             </TouchableOpacity>
-//           </View>
-//         </Animated.View>
-//       </Animated.View>
-//     </Modal>
-//   );
-// };
+              {/* Close Button */}
+              <TouchableOpacity 
+                style={styles.closeButton}
+                onPress={() => setShowSuccessModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <X size={20} color="#9ca3af" />
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </Animated.View>
+      </Modal>
+    );
+  };
 
 
   /* ----------------------------- List Components ----------------------------- */
@@ -1625,7 +1834,7 @@ export default function ProductsPage({ navigation, route }) {
 
       {/* Modals */}
       {renderSortModal()}
-      {/* {renderSuccessModal()} */}
+      {renderSuccessModal()}
 
       {showProductDetails ? (
         renderProductDetails()
@@ -2480,34 +2689,146 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  closeButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerButton: {
     padding: 8,
+    position: 'relative',
   },
   detailsTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: '#333',
   },
-  headerButton: {
-    padding: 8,
-    position: 'relative',
-  },
-  cartBadgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
   detailsContent: {
     flex: 1,
   },
-  imageGallery: {
+  
+  // Thumbnail Gallery Styles
+  thumbnailGalleryContainer: {
+    backgroundColor: '#f8f9fa',
+  },
+  mainImageContainer: {
+    position: 'relative',
     height: 320,
     backgroundColor: '#f8f9fa',
   },
-  detailsImage: {
+  mainImage: {
     width: '100%',
     height: '100%',
   },
+  shareButtonOverlay: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  imageCounter: {
+    position: 'absolute',
+    bottom: 16,
+    right: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    zIndex: 10,
+  },
+  imageCounterText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  thumbnailStrip: {
+    backgroundColor: '#fff',
+    paddingVertical: 12,
+  },
+  thumbnailStripContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  thumbnailButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    overflow: 'hidden',
+  },
+  thumbnailButtonSelected: {
+    borderColor: '#FF6B00',
+  },
+  thumbnailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  
+  // Gallery Modal Styles
+  galleryModalContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 20,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  galleryCloseButton: {
+    padding: 8,
+  },
+  galleryCounter: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  galleryShareButton: {
+    padding: 8,
+  },
+  galleryImageContainer: {
+    height: height,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '80%',
+  },
+  galleryNavButton: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -20 }],
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  galleryNavLeft: {
+    left: 10,
+  },
+  galleryNavRight: {
+    right: 10,
+  },
+  
   noImageContainer: {
     width: '100%',
     height: '100%',
@@ -2884,83 +3205,6 @@ const styles = StyleSheet.create({
   },
   
   // Success Modal
-  // successModalOverlay: {
-  //   flex: 1,
-  //   backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  //   justifyContent: 'center',
-  //   alignItems: 'center',
-  //   padding: 20,
-  // },
-  // successModal: {
-  //   width: '100%',
-  //   maxWidth: 400,
-  //   backgroundColor: '#fff',
-  //   borderRadius: 24,
-  //   elevation: 5,
-  //   shadowColor: '#000',
-  //   shadowOffset: { width: 0, height: 4 },
-  //   shadowOpacity: 0.3,
-  //   shadowRadius: 8,
-  // },
-  // successModalContent: {
-  //   padding: 32,
-  //   alignItems: 'center',
-  // },
-  // successIconContainer: {
-  //   width: 80,
-  //   height: 80,
-  //   borderRadius: 40,
-  //   backgroundColor: '#E8F5E9',
-  //   justifyContent: 'center',
-  //   alignItems: 'center',
-  //   marginBottom: 24,
-  // },
-  // successModalTitle: {
-  //   fontSize: 24,
-  //   fontWeight: 'bold',
-  //   color: '#333',
-  //   marginBottom: 12,
-  //   textAlign: 'center',
-  // },
-  // successModalMessage: {
-  //   fontSize: 16,
-  //   color: '#666',
-  //   textAlign: 'center',
-  //   marginBottom: 32,
-  //   lineHeight: 24,
-  // },
-  // successModalButtons: {
-  //   flexDirection: 'row',
-  //   width: '100%',
-  //   gap: 12,
-  // },
-  // continueButton: {
-  //   flex: 1,
-  //   paddingVertical: 16,
-  //   borderRadius: 12,
-  //   backgroundColor: '#f5f5f5',
-  //   alignItems: 'center',
-  // },
-  // continueButtonText: {
-  //   fontSize: 16,
-  //   fontWeight: '600',
-  //   color: '#333',
-  // },
-  // viewCartButton: {
-  //   flex: 1,
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  //   paddingVertical: 16,
-  //   borderRadius: 12,
-  //   backgroundColor: '#FF6B00',
-  //   gap: 8,
-  // },
-  // viewCartButtonText: {
-  //   fontSize: 16,
-  //   fontWeight: '600',
-  //   color: '#fff',
-  // },
   successModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

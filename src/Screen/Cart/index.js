@@ -301,6 +301,9 @@ const Cart = () => {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   
+  // NEW: COD Settings State
+  const [codEnabled, setCodEnabled] = useState(true);
+  
   // Payment method states
   const [paymentMethod, setPaymentMethod] = useState('online');
   const [codCharge] = useState(99);
@@ -350,6 +353,24 @@ const Cart = () => {
   
   // Ref to track if component is mounted
   const isMounted = useRef(true);
+
+  // ============= NEW: FETCH COD SETTINGS =============
+  useEffect(() => {
+    const fetchPaymentSettings = async () => {
+      try {
+        const res = await axiosInstance.get('/api/cash-on-delivery');
+        if (res.data && res.data.data) {
+          setCodEnabled(res.data.data.codEnabled);
+        }
+      } catch (err) {
+        console.error("Failed to fetch payment settings", err);
+        // Default to true if API fails
+        setCodEnabled(true);
+      }
+    };
+
+    fetchPaymentSettings();
+  }, []);
 
   // ============= FUNCTION DEFINITIONS (NOW SAFE TO USE IN HOOKS) =============
 
@@ -866,7 +887,7 @@ const Cart = () => {
     }
   };
 
-  // Handle COD checkout
+  // ============= NEW: HANDLE COD CHECKOUT =============
   const handleCODCheckout = async () => {
     console.log("=== STARTING COD CHECKOUT ===");
     
@@ -2227,25 +2248,27 @@ const Cart = () => {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.paymentMethodCard,
-                    paymentMethod === 'cod' && styles.paymentMethodSelected
-                  ]}
-                  onPress={() => handlePaymentMethodChange('cod')}
-                >
-                  <View style={styles.paymentMethodHeader}>
-                    <Wallet size={20} color={paymentMethod === 'cod' ? '#FF6B00' : '#666'} />
-                    <Text style={[
-                      styles.paymentMethodTitle,
-                      paymentMethod === 'cod' && styles.paymentMethodTitleSelected
-                    ]}>Cash on Delivery</Text>
-                  </View>
-                  <Text style={styles.paymentMethodDescription}>
-                    Pay when you receive your order
-                    <Text style={styles.codChargeText}> + ₹{codCharge} COD charge</Text>
-                  </Text>
-                </TouchableOpacity>
+                {codEnabled && (
+                  <TouchableOpacity
+                    style={[
+                      styles.paymentMethodCard,
+                      paymentMethod === 'cod' && styles.paymentMethodSelected
+                    ]}
+                    onPress={() => handlePaymentMethodChange('cod')}
+                  >
+                    <View style={styles.paymentMethodHeader}>
+                      <Wallet size={20} color={paymentMethod === 'cod' ? '#FF6B00' : '#666'} />
+                      <Text style={[
+                        styles.paymentMethodTitle,
+                        paymentMethod === 'cod' && styles.paymentMethodTitleSelected
+                      ]}>Cash on Delivery</Text>
+                    </View>
+                    <Text style={styles.paymentMethodDescription}>
+                      Pay when you receive your order
+                      <Text style={styles.codChargeText}> + ₹{codCharge} COD charge</Text>
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
