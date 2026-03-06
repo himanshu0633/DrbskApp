@@ -1656,198 +1656,275 @@ const Cart = () => {
   );
 
   // Render address modal
-  const renderAddressModal = () => (
-    <Modal
-      visible={showAddressModal}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={() => setShowAddressModal(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+const renderAddressModal = () => (
+  <Modal
+    visible={showAddressModal}
+    animationType="slide"
+    transparent={true}
+    onRequestClose={() => setShowAddressModal(false)}
+  >
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        {/* Header with gradient background */}
+        <LinearGradient
+          colors={['#FF6B00', '#FF8E53']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.modalHeaderGradient}
+        >
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>
-              {isAuthenticated ? 'Add New Address' : 'Add Delivery Address'}
-            </Text>
-            <Text style={styles.modalSubtitle}>
-              Please fill in all required fields
-            </Text>
+            <View>
+              <Text style={styles.modalTitle}>
+                {isAuthenticated ? 'Add New Address' : 'Add Delivery Address'}
+              </Text>
+              <Text style={styles.modalSubtitle}>
+                Please fill in all required fields
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowAddressModal(false)}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
           </View>
-          
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
-            {/* Email Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email Address *</Text>
-              <TextInput
-                style={[styles.textInput, formData.email && !isValidEmail(formData.email) && styles.inputError]}
-                value={formData.email}
-                onChangeText={handleEmailChange}
-                placeholder="Enter your email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              {formData.email && !isValidEmail(formData.email) ? (
-                <Text style={styles.errorText}>Please enter a valid email</Text>
-              ) : (
-                <Text style={styles.helperText}>Required for order confirmation and updates</Text>
-              )}
-            </View>
+        </LinearGradient>
 
-            {/* Address Fields */}
-            <View style={styles.row}>
-              <View style={[styles.inputContainer, { flex: 1, marginRight: 8 }]}>
-                <Text style={styles.inputLabel}>Flat / House No. *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={formData.flat}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, flat: text }))}
-                  placeholder="Enter flat/house number"
-                />
+        <ScrollView 
+          style={styles.modalScroll} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.modalBody}>
+            {/* Contact Information Section */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={styles.sectionIcon}>📧</Text>
+                <Text style={styles.sectionTitle}>Contact Information</Text>
               </View>
-              
-              <View style={[styles.inputContainer, { flex: 1, marginLeft: 8 }]}>
-                <Text style={styles.inputLabel}>Landmark *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={formData.landmark}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, landmark: text }))}
-                  placeholder="Enter landmark"
-                />
-              </View>
-            </View>
 
-            {/* State Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>State *</Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowStateDropdown(true)}
-              >
-                <Text style={formData.state ? styles.pickerText : styles.pickerPlaceholder}>
-                  {formData.state || 'Select State'}
+              {/* Email Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>
+                  Email Address <Text style={styles.requiredStar}>*</Text>
                 </Text>
-                <Icon name="arrow-drop-down" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-
-            {/* City Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>City *</Text>
-              <TouchableOpacity
-                style={[styles.pickerButton, !formData.state && styles.disabledPicker]}
-                onPress={() => {
-                  if (formData.state) {
-                    setShowCityDropdown(true);
-                  }
-                }}
-                disabled={!formData.state}
-              >
-                <Text style={formData.city ? styles.pickerText : styles.pickerPlaceholder}>
-                  {formData.city || (formData.state ? 'Select City' : 'Select state first')}
-                </Text>
-                <Icon name="arrow-drop-down" size={24} color="#666" />
-              </TouchableOpacity>
-              {!formData.state && (
-                <Text style={styles.helperText}>Please select state first</Text>
-              )}
-            </View>
-
-            {/* Country Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Country</Text>
-              <TextInput
-                style={[styles.textInput, { backgroundColor: '#f5f5f5' }]}
-                value="India"
-                editable={false}
-              />
-            </View>
-
-            {/* Phone Field */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Phone Number *</Text>
-              <View style={styles.phoneInputContainer}>
-                <View style={styles.phonePrefix}>
-                  <Text style={styles.phonePrefixText}>+91</Text>
+                <View style={[
+                  styles.inputWrapper,
+                  formData.email && !isValidEmail(formData.email) && styles.inputWrapperError
+                ]}>
+                  <Text style={styles.fieldIcon}>📧</Text>
+                  <TextInput
+                    style={styles.fieldInput}
+                    value={formData.email}
+                    onChangeText={handleEmailChange}
+                    placeholder="Enter your email"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor="#999"
+                  />
                 </View>
-                <TextInput
-                  style={[styles.phoneInput, formData.phone.length > 0 && formData.phone.length !== 10 && styles.inputError]}
-                  value={formData.phone}
-                  onChangeText={handlePhoneChange}
-                  placeholder="Enter 10-digit phone number"
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                />
+                {formData.email && !isValidEmail(formData.email) ? (
+                  <Text style={styles.errorText}>Please enter a valid email</Text>
+                ) : (
+                  <Text style={styles.helperText}>Order confirmation will be sent here</Text>
+                )}
               </View>
-              {formData.phone.length > 0 && formData.phone.length !== 10 ? (
-                <Text style={styles.errorText}>Phone number must be exactly 10 digits</Text>
-              ) : (
-                <Text style={styles.helperText}>Required for delivery updates</Text>
-              )}
+
+              {/* Phone Field */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>
+                  Phone Number <Text style={styles.requiredStar}>*</Text>
+                </Text>
+                <View style={[
+                  styles.phoneWrapper,
+                  formData.phone.length > 0 && formData.phone.length !== 10 && styles.inputWrapperError
+                ]}>
+                  <View style={styles.phonePrefix}>
+                    <Text style={styles.phonePrefixText}>+91</Text>
+                  </View>
+                  <TextInput
+                    style={styles.phoneField}
+                    value={formData.phone}
+                    onChangeText={handlePhoneChange}
+                    placeholder="Enter 10-digit number"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    placeholderTextColor="#999"
+                  />
+                </View>
+                {formData.phone.length > 0 && formData.phone.length !== 10 ? (
+                  <Text style={styles.errorText}>Phone number must be exactly 10 digits</Text>
+                ) : (
+                  <Text style={styles.helperText}>For delivery updates and coordination</Text>
+                )}
+              </View>
             </View>
 
-            {/* Required Note */}
-            <View style={styles.requiredNote}>
-              <Text style={styles.requiredStar}>*</Text>
-              <Text style={styles.requiredText}>Required fields</Text>
+            {/* Address Details Section */}
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionTitleContainer}>
+                <Text style={styles.sectionIcon}>🏠</Text>
+                <Text style={styles.sectionTitle}>Address Details</Text>
+              </View>
+
+              {/* Flat/House No and Landmark Row */}
+              <View style={styles.rowContainer}>
+                <View style={[styles.fieldContainer, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.fieldLabel}>
+                    Flat/House No. <Text style={styles.requiredStar}>*</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.fieldIcon}>🏠</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={formData.flat}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, flat: text }))}
+                      placeholder="e.g., Flat 101"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+
+                <View style={[styles.fieldContainer, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.fieldLabel}>
+                    Landmark <Text style={styles.requiredStar}>*</Text>
+                  </Text>
+                  <View style={styles.inputWrapper}>
+                    <Text style={styles.fieldIcon}>📍</Text>
+                    <TextInput
+                      style={styles.fieldInput}
+                      value={formData.landmark}
+                      onChangeText={(text) => setFormData(prev => ({ ...prev, landmark: text }))}
+                      placeholder="e.g., Near Park"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* State and City Row */}
+              <View style={styles.rowContainer}>
+                <View style={[styles.fieldContainer, { flex: 1, marginRight: 8 }]}>
+                  <Text style={styles.fieldLabel}>
+                    State <Text style={styles.requiredStar}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.pickerWrapper}
+                    onPress={() => setShowStateDropdown(true)}
+                  >
+                    <Text style={styles.fieldIcon}>🗺️</Text>
+                    <Text style={formData.state ? styles.pickerText : styles.pickerPlaceholder}>
+                      {formData.state || 'Select State'}
+                    </Text>
+                    <Text style={styles.dropdownIcon}>▼</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={[styles.fieldContainer, { flex: 1, marginLeft: 8 }]}>
+                  <Text style={styles.fieldLabel}>
+                    City <Text style={styles.requiredStar}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.pickerWrapper,
+                      !formData.state && styles.pickerDisabled
+                    ]}
+                    onPress={() => formData.state && setShowCityDropdown(true)}
+                    disabled={!formData.state}
+                  >
+                    <Text style={styles.fieldIcon}>🏙️</Text>
+                    <Text style={formData.city ? styles.pickerText : styles.pickerPlaceholder}>
+                      {formData.city || (formData.state ? 'Select City' : 'Select state first')}
+                    </Text>
+                    <Text style={styles.dropdownIcon}>▼</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Country Field (Disabled) */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Country</Text>
+                <View style={[styles.inputWrapper, styles.disabledField]}>
+                  <Text style={styles.fieldIcon}>🌍</Text>
+                  <TextInput
+                    style={[styles.fieldInput, { color: '#666' }]}
+                    value="India"
+                    editable={false}
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Required Fields Note */}
+            <View style={styles.noteContainer}>
+              <Text style={styles.noteIcon}>ℹ️</Text>
+              <Text style={styles.noteText}>
+                <Text style={styles.requiredStar}>*</Text> Required fields
+              </Text>
             </View>
 
             {/* Guest Info Note */}
             {!isAuthenticated && (
-              <View style={styles.guestInfoNote}>
-                <Text style={styles.guestInfoIcon}>ⓘ</Text>
-                <Text style={styles.guestInfoText}>
-                  Your address will be saved locally for this session only. 
-                  <Text style={styles.guestInfoBold}> Sign up</Text> to save addresses permanently.
+              <View style={styles.guestNote}>
+                <Text style={styles.guestNoteIcon}>📝</Text>
+                <Text style={styles.guestNoteText}>
+                  Your address will be saved locally. 
+                  <Text style={styles.guestNoteBold}> Sign up</Text> to save permanently and track orders.
                 </Text>
               </View>
             )}
-          </ScrollView>
+          </View>
+        </ScrollView>
 
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => setShowAddressModal(false)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.saveButton,
-                (loading || 
-                  !formData.email || 
-                  !isValidEmail(formData.email) ||
-                  !formData.flat || 
-                  !formData.landmark || 
-                  !formData.city || 
-                  !formData.state || 
-                  formData.phone.length !== 10) && styles.disabledButton
-              ]}
-              onPress={handleAddAddress}
-              disabled={
-                loading || 
+        {/* Footer Buttons */}
+        <View style={styles.modalFooter}>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => setShowAddressModal(false)}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
+              styles.saveButton,
+              (loading || 
                 !formData.email || 
                 !isValidEmail(formData.email) ||
                 !formData.flat || 
                 !formData.landmark || 
                 !formData.city || 
                 !formData.state || 
-                formData.phone.length !== 10
-              }
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
+                formData.phone.length !== 10) && styles.saveButtonDisabled
+            ]}
+            onPress={handleAddAddress}
+            disabled={
+              loading || 
+              !formData.email || 
+              !isValidEmail(formData.email) ||
+              !formData.flat || 
+              !formData.landmark || 
+              !formData.city || 
+              !formData.state || 
+              formData.phone.length !== 10
+            }
+          >
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.saveButtonIcon}>✓</Text>
                 <Text style={styles.saveButtonText}>
                   {isAuthenticated ? 'Add Address' : 'Save Address'}
                 </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
-    </Modal>
-  );
+    </View>
+  </Modal>
+);
 
   // Clear Cart Modal Component
   const ClearCartModal = ({ visible, onClose, onConfirm }) => {
@@ -3866,6 +3943,342 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     opacity: 0.9,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Dark overlay for better focus
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 10,
+  },
+  modalHeaderGradient: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalScroll: {
+    maxHeight: '70%',
+  },
+  modalBody: {
+    padding: 20,
+    backgroundColor: '#fff',
+  },
+  
+  // Section Styles
+  sectionContainer: {
+    marginBottom: 24,
+    backgroundColor: '#fff',
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginLeft: 8,
+  },
+  
+  // Field Styles
+  fieldContainer: {
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  requiredStar: {
+    color: '#f44336',
+    fontSize: 16,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    minHeight: 50,
+  },
+  inputWrapperError: {
+    borderColor: '#f44336',
+    backgroundColor: '#fff5f5',
+  },
+  fieldIcon: {
+    marginRight: 10,
+  },
+  fieldInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+    paddingVertical: 12,
+  },
+  
+  // Phone Input Styles
+  phoneWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  phonePrefix: {
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: '#f0f0f0',
+    borderRightWidth: 1,
+    borderRightColor: '#e0e0e0',
+  },
+  phonePrefixText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+  },
+  phoneField: {
+    flex: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#333',
+    backgroundColor: '#f8f9fa',
+  },
+  
+  // Picker Styles
+  pickerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 12,
+    minHeight: 50,
+  },
+  pickerDisabled: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.7,
+  },
+  pickerText: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+  },
+  pickerPlaceholder: {
+    flex: 1,
+    fontSize: 15,
+    color: '#999',
+  },
+  
+  // Row Styles
+  rowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  
+  // Helper Text Styles
+  errorText: {
+    fontSize: 12,
+    color: '#f44336',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  helperText: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  
+  // Disabled Field
+  disabledField: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#e0e0e0',
+  },
+  
+  // Note Container
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  noteText: {
+    fontSize: 13,
+    color: '#666',
+    marginLeft: 8,
+  },
+  
+  // Guest Note
+  guestNote: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF3E0',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  guestNoteText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#E65100',
+    marginLeft: 12,
+    lineHeight: 18,
+  },
+  guestNoteBold: {
+    fontWeight: 'bold',
+  },
+  
+  // Footer Styles
+  modalFooter: {
+    flexDirection: 'row',
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  saveButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#FF6B00',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+   modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+
+  // Section Icons
+  sectionIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  
+  // Field Icons
+  fieldIcon: {
+    fontSize: 18,
+    marginRight: 10,
+    color: '#999',
+  },
+  
+  // Dropdown Icon
+  dropdownIcon: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+  },
+  
+  // Save Button Icon
+  saveButtonIcon: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  
+  // Note Icon
+  noteIcon: {
+    fontSize: 16,
+    marginRight: 8,
+    color: '#FF6B00',
+  },
+  
+  // Guest Note Icon
+  guestNoteIcon: {
+    fontSize: 20,
+    marginRight: 12,
+    color: '#FF6B00',
   },
 });
 
